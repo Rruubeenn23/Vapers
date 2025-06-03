@@ -14,7 +14,7 @@ function Comprar() {
   useEffect(() => {
     const fetchVapers = async () => {
       try {
-        const res = await fetch('http://localhost:3000/');
+        const res = await fetch('https://vapers-api.onrender.com/');
         const data = await res.json();
         setVapers(data);
       } catch (error) {
@@ -39,7 +39,7 @@ function Comprar() {
     e.preventDefault();
     
     try {
-      const res = await fetch('http://localhost:3000/compras', {
+      const res = await fetch('https://vapers-api.onrender.com/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -55,7 +55,7 @@ function Comprar() {
         alert('Compra registrada correctamente');
         setShowModal(false);
         // Actualizar stock
-        await fetch(`http://localhost:3000/vapers/${selectedVaper.id}`, {
+        await fetch(`https://vapers-api.onrender.com/${selectedVaper.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
