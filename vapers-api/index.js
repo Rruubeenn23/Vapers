@@ -115,7 +115,8 @@ app.post('/ventas', async (req, res) => {
       .insert([{
         id_vaper: idVaper,
         cantidad,
-        precio_unitario: precioUnitario
+        precio_unitario: precioUnitario,
+        cliente
       }]);
 
     if (error) {
