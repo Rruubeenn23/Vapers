@@ -54,11 +54,12 @@ function Vender() {
         })
         });
 
-        if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData?.error || 'Error al registrar venta');
-        }
 
+        if (!res.ok) {
+        const text = await res.text(); // En vez de .json()
+        throw new Error(`Error ${res.status}: ${text}`);
+        }
+        
         alert('Venta registrada correctamente');
         setShowModal(false);
 
