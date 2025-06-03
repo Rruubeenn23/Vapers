@@ -142,3 +142,20 @@ app.post('/ventas', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
+app.get('/api/ventas', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('*');
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('Error fetching ventas:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
