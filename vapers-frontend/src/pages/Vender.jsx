@@ -7,10 +7,10 @@ function Vender() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     cantidad: 1,
-    precio_unitario: 0
+    precio_unitario: 0,
+    cliente: '',
   });
 
-  // Obtener vapers desde la API
   useEffect(() => {
     const fetchVapers = async () => {
       try {
@@ -28,10 +28,17 @@ function Vender() {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: name === 'cantidad' ? parseInt(value) : parseFloat(value),
-      total: name === 'cantidad'
-        ? (prev.precio_unitario * value).toFixed(2)
-        : (value * prev.cantidad).toFixed(2)
+      [name]: name === 'cantidad'
+        ? parseInt(value)
+        : name === 'precio_unitario'
+        ? parseFloat(value)
+        : value,
+      total:
+        name === 'cantidad'
+          ? (prev.precio_unitario * value).toFixed(2)
+          : name === 'precio_unitario'
+          ? (value * prev.cantidad).toFixed(2)
+          : (prev.precio_unitario * prev.cantidad).toFixed(2),
     }));
   };
 
@@ -39,52 +46,49 @@ function Vender() {
     e.preventDefault();
 
     if (form.cantidad > selectedVaper.stock) {
-        alert('No hay suficiente stock disponible.');
-        return;
+      alert('No hay suficiente stock disponible.');
+      return;
     }
 
     try {
-        const res = await fetch('https://api-vapers.onrender.com/ventas', {
+      const res = await fetch('https://api-vapers.onrender.com/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            id_vaper: selectedVaper.id,
-            cantidad: form.cantidad,
-            precio_unitario: form.precio_unitario
-        })
-        });
+          id_vaper: selectedVaper.id,
+          cantidad: form.cantidad,
+          precio_unitario: form.precio_unitario,
+          cliente: form.cliente.trim(),
+        }),
+      });
 
-
-        if (!res.ok) {
-        const text = await res.text(); // En vez de .json()
+      if (!res.ok) {
+        const text = await res.text();
         throw new Error(`Error ${res.status}: ${text}`);
-        }
-        
-        alert('Venta registrada correctamente');
-        setShowModal(false);
+      }
 
-        // Actualizar lista de vapers localmente (para reflejar el nuevo stock)
-        setVapers(prev =>
-        prev.map(v =>
-            v.id === selectedVaper.id
+      alert('Venta registrada correctamente');
+      setShowModal(false);
+
+      setVapers((prev) =>
+        prev.map((v) =>
+          v.id === selectedVaper.id
             ? { ...v, stock: v.stock - form.cantidad }
             : v
         )
-        );
-
+      );
     } catch (error) {
-        console.error('Error registrando venta:', error);
-        alert('Hubo un error al registrar la venta.');
+      console.error('Error registrando venta:', error);
+      alert('Hubo un error al registrar la venta.');
     }
-    };
-
+  };
 
   return (
     <div className="vender-container">
       <h2>Vender Vapers</h2>
 
       <div className="vaper-grid">
-        {vapers.map(vaper => (
+        {vapers.map((vaper) => (
           <div
             key={vaper.id}
             className="vaper-card"
@@ -93,7 +97,8 @@ function Vender() {
               setForm({
                 cantidad: 1,
                 precio_unitario: vaper.precio_unitario || 0,
-                total: (vaper.precio_unitario || 0).toFixed(2)
+                cliente: '',
+                total: (vaper.precio_unitario || 0).toFixed(2),
               });
               setShowModal(true);
             }}
@@ -110,6 +115,17 @@ function Vender() {
           <div className="modal-content">
             <h3>Vender {selectedVaper?.nombre}</h3>
             <form onSubmit={handleSubmitVenta}>
+              <div className="form-group">
+                <label>Cliente:</label>
+                <input
+                  type="text"
+                  name="cliente"
+                  value={form.cliente}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
               <div className="form-group">
                 <label>Cantidad:</label>
                 <input
@@ -146,7 +162,9 @@ function Vender() {
               </div>
 
               <div className="modal-buttons">
-                <button type="button" onClick={() => setShowModal(false)}>Cancelar</button>
+                <button type="button" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </button>
                 <button type="submit">Confirmar Venta</button>
               </div>
             </form>
