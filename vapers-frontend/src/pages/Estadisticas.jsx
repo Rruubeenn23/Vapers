@@ -5,7 +5,7 @@ const Estadisticas = () => {
   const [ventas, setVentas] = useState([]);
 
   useEffect(() => {
-    fetch('https://vapers-api.onrender.com/api/ventas')
+    fetch('https://api-vapers.onrender.com/api/ventas')
       .then(res => res.json())
       .then(data => setVentas(data));
   }, []);

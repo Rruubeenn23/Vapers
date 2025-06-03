@@ -40,7 +40,7 @@ function NuevoVaper() {
     }
 
     try {
-      const res = await fetch('https://vapers-api.onrender.com/vapers', {
+      const res = await fetch('https://api-vapers.onrender.com/vapers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
