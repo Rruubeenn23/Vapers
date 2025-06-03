@@ -105,35 +105,40 @@ app.post('/vapers', async (req, res) => {
     });
   }
 });
+
 app.post('/ventas', async (req, res) => {
-  const { idVaper, cantidad, precioUnitario } = req.body;
-
   try {
-    // Insertar la venta
-    const { data, error } = await supabase
-      .from('ventas')
-      .insert([{
-        id_vaper: idVaper,
-        cantidad,
-        precio_unitario: precioUnitario,
-        cliente
-      }]);
+    console.log('REQ BODY:', req.body); // 👉 Verifica que todo llegue bien
 
-    if (error) {
-      console.error('Error al insertar venta:', error);
-      return res.status(500).json({ error: error.message });
+    const { id_vaper, cantidad, precio_unitario, cliente } = req.body;
+
+    if (!id_vaper || !cantidad || !precio_unitario || !cliente) {
+      return res.status(400).json({ error: 'Faltan datos requeridos' });
     }
 
-    // Lógica opcional: reducir el stock
-    await supabase.rpc('reducir_stock', {
-      vid: idVaper,
+    const { data, error } = await supabase
+      .from('ventas')
+      .insert([{ id_vaper, cantidad, precio_unitario, cliente }]);
+
+    if (error) {
+      console.error('SUPABASE INSERT ERROR:', error);
+      return res.status(500).json({ error: 'Error insertando venta' });
+    }
+
+    // Reducir stock
+    const { error: stockError } = await supabase.rpc('reducir_stock', {
+      vid: id_vaper,
       cantidad_vendida: cantidad
     });
 
-    res.status(201).json({ mensaje: 'Venta registrada', data });
+    if (stockError) {
+      console.error('SUPABASE RPC ERROR:', stockError);
+      return res.status(500).json({ error: 'Error reduciendo stock' });
+    }
 
+    res.status(201).json({ message: 'Venta registrada correctamente', data });
   } catch (err) {
-    console.error('Error inesperado al registrar venta:', err);
+    console.error('UNEXPECTED ERROR:', err); // 👈 Aquí atrapamos cualquier error inesperado
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
