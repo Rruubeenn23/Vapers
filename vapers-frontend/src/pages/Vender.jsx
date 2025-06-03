@@ -39,39 +39,44 @@ function Vender() {
     e.preventDefault();
 
     if (form.cantidad > selectedVaper.stock) {
-      alert('No hay suficiente stock disponible.');
-      return;
+        alert('No hay suficiente stock disponible.');
+        return;
     }
 
     try {
-      const res = await fetch('https://api-vapers.onrender.com/', {
+        const res = await fetch('https://api-vapers.onrender.com/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id_vaper: selectedVaper.id,
-          cantidad: form.cantidad,
-          precio_unitario: form.precio_unitario,
-          total: form.precio_unitario * form.cantidad,
-          fecha: new Date().toISOString()
+            id_vaper: selectedVaper.id,
+            cantidad: form.cantidad,
+            precio_unitario: form.precio_unitario
         })
-      });
+        });
 
-      if (res.ok) {
+        if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData?.error || 'Error al registrar venta');
+        }
+
         alert('Venta registrada correctamente');
         setShowModal(false);
-        // Actualizar stock
-        await fetch(`https://api-vapers.onrender.com/${selectedVaper.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stock: selectedVaper.stock - form.cantidad
-          })
-        });
-      }
+
+        // Actualizar lista de vapers localmente (para reflejar el nuevo stock)
+        setVapers(prev =>
+        prev.map(v =>
+            v.id === selectedVaper.id
+            ? { ...v, stock: v.stock - form.cantidad }
+            : v
+        )
+        );
+
     } catch (error) {
-      console.error('Error registrando venta:', error);
+        console.error('Error registrando venta:', error);
+        alert('Hubo un error al registrar la venta.');
     }
-  };
+    };
+
 
   return (
     <div className="vender-container">
