@@ -3,29 +3,34 @@ import '../styles/Estadisticas.css';
 
 const Estadisticas = () => {
   const [ventas, setVentas] = useState([]);
+  const [productos, setProductos] = useState([]);
 
   useEffect(() => {
     fetch('https://api-vapers.onrender.com/api/ventas')
       .then(res => res.json())
       .then(data => setVentas(data));
+
+    fetch('https://api-vapers.onrender.com/api/productos')
+      .then(res => res.json())
+      .then(data => setProductos(data));
   }, []);
 
-  // Total ventas es la cantidad de registros
+  const obtenerNombreProducto = (id) => {
+    const producto = productos.find(p => p.id === id);
+    return producto ? producto.nombre : id;
+  };
+
   const totalVentas = ventas.length;
-
-  // Ingresos totales sumando el total de cada venta
   const ingresosTotales = ventas.reduce((acc, v) => acc + v.total, 0);
-
-  // Ticket medio = ingresos totales dividido por total de ventas
   const ticketMedio = totalVentas ? (ingresosTotales / totalVentas).toFixed(2) : 0;
 
-  // Producto más vendido según la suma de cantidades por id_vaper
   const productoMasVendido = () => {
     const conteo = {};
     ventas.forEach(v => {
       conteo[v.id_vaper] = (conteo[v.id_vaper] || 0) + v.cantidad;
     });
-    return Object.entries(conteo).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    const [idMasVendido] = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
+    return obtenerNombreProducto(idMasVendido);
   };
 
   return (
@@ -46,7 +51,7 @@ const Estadisticas = () => {
           <p>€{ticketMedio}</p>
         </div>
         <div className="stat-card">
-          <h3>Producto más vendido (ID)</h3>
+          <h3>Producto más vendido</h3>
           <p>{productoMasVendido()}</p>
         </div>
       </div>
@@ -57,7 +62,7 @@ const Estadisticas = () => {
           <tr>
             <th>ID</th>
             <th>Cliente</th>
-            <th>Producto (ID)</th>
+            <th>Producto</th>
             <th>Precio Unitario (€)</th>
             <th>Cantidad</th>
             <th>Total (€)</th>
@@ -69,7 +74,7 @@ const Estadisticas = () => {
             <tr key={i}>
               <td>{venta.id}</td>
               <td>{venta.cliente}</td>
-              <td>{venta.id_vaper}</td>
+              <td>{obtenerNombreProducto(venta.id_vaper)}</td>
               <td>{venta.precio_unitario}</td>
               <td>{venta.cantidad}</td>
               <td>{venta.total}</td>
