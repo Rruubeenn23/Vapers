@@ -4,20 +4,30 @@ import '../styles/Estadisticas.css';
 const Estadisticas = () => {
   const [ventas, setVentas] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [productosMap, setProductosMap] = useState({});
 
   useEffect(() => {
+    // Obtener ventas
     fetch('https://api-vapers.onrender.com/api/ventas')
       .then(res => res.json())
       .then(data => setVentas(data));
 
-    fetch('https://api-vapers.onrender.com/api/productos')
+    // Obtener productos
+    fetch('https://api-vapers.onrender.com/')
       .then(res => res.json())
-      .then(data => setProductos(data));
+      .then(data => {
+        setProductos(data);
+        // Crear un mapeo de id_vaper a nombre
+        const map = data.reduce((acc, producto) => {
+          acc[producto.id] = producto.nombre;
+          return acc;
+        }, {});
+        setProductosMap(map);
+      });
   }, []);
 
   const obtenerNombreProducto = (id) => {
-    const producto = productos.find(p => p.id === id);
-    return producto ? producto.nombre : id;
+    return productosMap[id] || 'Desconocido';
   };
 
   const totalVentas = ventas.length;
