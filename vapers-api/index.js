@@ -29,8 +29,6 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
-// Resto de tu código...
-
 const supabase = require('./lib/supabase');
 
 app.get('/', async (req, res) => {
@@ -105,5 +103,36 @@ app.post('/vapers', async (req, res) => {
       error: 'Error interno del servidor',
       details: err.message 
     });
+  }
+});
+app.post('/ventas', async (req, res) => {
+  const { idVaper, cantidad, precioUnitario } = req.body;
+
+  try {
+    // Insertar la venta
+    const { data, error } = await supabase
+      .from('ventas')
+      .insert([{
+        id_vaper: idVaper,
+        cantidad,
+        precio_unitario: precioUnitario
+      }]);
+
+    if (error) {
+      console.error('Error al insertar venta:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Lógica opcional: reducir el stock
+    await supabase.rpc('reducir_stock', {
+      vid: idVaper,
+      cantidad_vendida: cantidad
+    });
+
+    res.status(201).json({ mensaje: 'Venta registrada', data });
+
+  } catch (err) {
+    console.error('Error inesperado al registrar venta:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
