@@ -3,14 +3,33 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+// Permitir estos orígenes (localhost para desarrollo y tu dominio en producción)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://vapers-78l8.vercel.app',  // frontend en Vercel
+];
+
 const corsOptions = {
-  origin: 'https://vapers-78l8.vercel.app',  // URL de tu frontend en Vercel
+  origin: function(origin, callback){
+    // Permitir solicitudes sin origen (como Postman)
+    if(!origin) return callback(null, true);
+    if(allowedOrigins.indexOf(origin) === -1){
+      const msg = `El CORS policy no permite el acceso desde el origen: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // si usas cookies o autorización
 };
 
 app.use(cors(corsOptions));
+
 app.use(express.json());
+
+// Resto de tu código...
 
 const supabase = require('./lib/supabase');
 
