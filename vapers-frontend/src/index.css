@@ -9,12 +9,13 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --primary: #646cff;
-  --secondary: #535bf2;
+  --primary: #6366f1;
+  --secondary: #4f46e5;
+  --accent: #f97316;
   --bg-light: #ffffff;
-  --text-dark: #2c2c2c;
+  --text-dark: #1f2937;
   --card-radius: 12px;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
 }
 
 body {

@@ -78,3 +78,21 @@ h2, h3 {
     font-size: 1.2rem;
   }
 }
+
+.stat-card {
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+.ventas-table th {
+  font-size: 1rem;
+  letter-spacing: 0.3px;
+}
+
+.ventas-table td {
+  font-size: 0.95rem;
+}

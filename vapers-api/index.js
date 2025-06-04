@@ -43,19 +43,31 @@ app.listen(PORT, () => {
 });
 
 app.post('/compras', async (req, res) => {
-  const { idVaper, cantidad, precioUnitario } = req.body;
+  const { id_vaper, cantidad, precio_unitario, total, fecha } = req.body;
 
+  if (!id_vaper || !cantidad || !precio_unitario || !total) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+  }
+
+  // Insertar compra
   const { data, error } = await supabase
     .from('compras')
-    .insert([{ id_vaper: idVaper, cantidad, precio_unitario: precioUnitario }]);
+    .insert([{ 
+      id_vaper, 
+      cantidad, 
+      precio_unitario, 
+      total, 
+      fecha 
+    }]);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
 
-  // Opcional: actualizar el stock
-  await supabase.rpc('incrementar_stock', { vid: idVaper, cantidad_comprada: cantidad });
-
-  res.json({ mensaje: 'Compra registrada', data });
+  res.status(201).json({ mensaje: 'Compra registrada', data });
 });
+
 
 app.post('/vapers', async (req, res) => {
   const { nombre, imagen, stock, precio_unitario } = req.body;
