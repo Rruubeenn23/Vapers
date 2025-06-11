@@ -4,6 +4,7 @@ import '../styles/Estadisticas.css';
 const Estadisticas = () => {
   const [ventas, setVentas] = useState([]);
   const [productosMap, setProductosMap] = useState({});
+  const [vapers, setVapers] = useState([]);
 
   useEffect(() => {
     // Ventas
@@ -20,13 +21,13 @@ const Estadisticas = () => {
           return acc;
         }, {});
         setProductosMap(map);
+        setVapers(data); // Guardamos los productos para calcular el stock total
       });
   }, []);
 
   const obtenerNombreProducto = (id) => productosMap[id] || id;
 
   // === Cálculos ===
-
   const totalVentas = ventas.length;
   const totalProductosVendidos = ventas.reduce((acc, v) => acc + v.cantidad, 0);
   const ingresosTotales = ventas.reduce((acc, v) => acc + v.total, 0);
@@ -71,6 +72,9 @@ const Estadisticas = () => {
     return obtenerNombreProducto(id);
   };
 
+  // === Nuevo cálculo: Productos restantes ===
+  const productosRestantes = vapers.reduce((acc, producto) => acc + producto.stock, 0);
+
   return (
     <div className="estadisticas-container">
       <h2>Estadísticas de Ventas</h2>
@@ -78,6 +82,7 @@ const Estadisticas = () => {
       <div className="stats-resumen">
         <div className="stat-card"><h3>Total ventas</h3><p>{totalVentas}</p></div>
         <div className="stat-card"><h3>Total productos vendidos</h3><p>{totalProductosVendidos}</p></div>
+        <div className="stat-card"><h3>Productos restantes</h3><p>{productosRestantes}</p></div>
         <div className="stat-card"><h3>Ingresos totales</h3><p>€{ingresosTotales.toFixed(2)}</p></div>
         <div className="stat-card"><h3>Ticket medio por producto</h3><p>€{ticketMedioPorProducto}</p></div>
         <div className="stat-card"><h3>Producto más vendido</h3><p>{productoMasVendido()}</p></div>

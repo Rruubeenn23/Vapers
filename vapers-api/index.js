@@ -124,7 +124,7 @@ app.post('/ventas', async (req, res) => {
 
     const { id_vaper, cantidad, precio_unitario, cliente } = req.body;
 
-    if (!id_vaper || !cantidad || !precio_unitario || !cliente) {
+    if (!id_vaper || !cantidad || precio_unitario === undefined || precio_unitario === null || !cliente) {
       return res.status(400).json({ error: 'Faltan datos requeridos' });
     }
 
