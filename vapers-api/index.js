@@ -172,7 +172,7 @@ app.get('/api/ventas', async (req, res) => {
   }
 });
 
-app.post('/finanzas', async (req, res) => {
+app.post('/api/finanzas', async (req, res) => {
   const { titulo, precio, descripcion, tag } = req.body;
 
   if (!titulo || !precio || !tag) {
@@ -191,7 +191,7 @@ app.post('/finanzas', async (req, res) => {
   res.status(201).json({ message: 'Registro creado correctamente', data });
 });
 
-app.get('/finanzas', async (req, res) => {
+app.get('/api/finanzas', async (req, res) => {
   const { data, error } = await supabase
     .from('finanzas')
     .select('*')
