@@ -171,3 +171,32 @@ app.get('/api/ventas', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
+app.post('/finanzas', async (req, res) => {
+  const { titulo, precio, descripcion, tag } = req.body;
+
+  if (!titulo || !precio || !tag) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+  }
+
+  const mes = new Date().toISOString().slice(0, 7); // "2025-07"
+  const { data, error } = await supabase
+    .from('finanzas')
+    .insert([{ titulo, precio, descripcion, tag, mes }]);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.status(201).json({ message: 'Registro creado correctamente', data });
+});
+
+app.get('/finanzas', async (req, res) => {
+  const { data, error } = await supabase
+    .from('finanzas')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
