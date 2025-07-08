@@ -4,6 +4,10 @@ import axios from 'axios';
 import '../styles/Finanzas.css';
 
 const Finanzas = () => {
+    const API_BASE = import.meta.env.PROD
+    ? 'https://api-vapers.onrender.com/api'
+    : 'http://localhost:3000';
+
   const [modalOpen, setModalOpen] = useState(false);
   const [titulo, setTitulo] = useState('');
   const [precio, setPrecio] = useState('');
