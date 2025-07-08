@@ -35,7 +35,7 @@ const Finanzas = () => {
 
   const fetchFinanzas = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/finanzas');
+      const res = await axios.get(`${API_BASE}/finanzas`);
       setFinanzas(res.data);
       const meses = [...new Set(res.data.map(f => f.mes))].sort().reverse();
       setMesesDisponibles(meses);
@@ -69,7 +69,7 @@ const Finanzas = () => {
     e.preventDefault();
     setMensaje('');
     try {
-      const response = await axios.post('http://localhost:3000/finanzas', {
+      const response = await axios.post(`${API_BASE}/finanzas`, {
         titulo,
         precio: parseFloat(precio),
         descripcion: descripcion || null,
