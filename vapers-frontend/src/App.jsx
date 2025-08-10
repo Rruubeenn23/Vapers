@@ -3,7 +3,7 @@ import Comprar from './pages/Comprar';
 import Vender from './pages/Vender';
 import NuevoVaper from './pages/NuevoVaper';
 import Finanzas from './pages/Finanzas';
-import SalesChat from '.pages/SalesChat';
+import SalesChat from './pages/SalesChat';
 
 function App() {
   return (
