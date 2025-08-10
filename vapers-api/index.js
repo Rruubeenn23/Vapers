@@ -201,41 +201,20 @@ app.get('/api/finanzas', async (req, res) => {
   res.json(data);
 });
 
-app.use(express.json());
-
-// index.js (o server.js)
-// Asegúrate de tener Express y body-parser JSON:
-const express = require('express');
-const appp = express();
-appp.use(express.json());
-
-// (Opcional) CORS básico si lo usas:
-const cors = require('cors');
-const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-if (allowed.length) {
-  appp.use(cors({
-    origin: function (origin, cb) {
-      if (!origin) return cb(null, true);
-      if (allowed.includes(origin)) return cb(null, true);
-      return cb(new Error('Not allowed by CORS'), false);
-    },
-    credentials: false,
-  }));
-}
-
-// Variables n8n
+// ============ n8n: proxy chat-ventas ============
+// Variables n8n (puedes ponerlas al principio del archivo si prefieres)
 const N8N_BASE_URL = process.env.N8N_BASE_URL || '';
 const N8N_CHAT_VENTAS_PATH = process.env.N8N_CHAT_VENTAS_PATH || '/webhook/chat-ventas';
 const N8N_URL = `${N8N_BASE_URL}${N8N_CHAT_VENTAS_PATH}`;
 
-// Nota: Node 18+ trae fetch global. Si no, instala node-fetch y descomenta:
-// const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Nota: en Node 18+ existe fetch global (Render usa Node 22), así que no importes node-fetch.
 
-// ---- RUTA NUEVA: /api/chat-ventas ----
-appp.post('/api/chat-ventas', async (req, res) => {
+// Ruta proxy -> n8n
+app.post('/api/chat-ventas', async (req, res) => {
   try {
     const payload = req.body || {};
     const headers = { 'Content-Type': 'application/json' };
+
     if (process.env.N8N_AUTH_HEADER && process.env.N8N_AUTH_VALUE) {
       headers[process.env.N8N_AUTH_HEADER] = process.env.N8N_AUTH_VALUE;
     }
@@ -248,7 +227,11 @@ appp.post('/api/chat-ventas', async (req, res) => {
 
     const text = await r.text();
     let data;
-    try { data = JSON.parse(text); } catch { data = { ok: false, error: 'Respuesta no JSON', raw: text }; }
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { ok: false, error: 'Respuesta no JSON desde n8n', raw: text };
+    }
 
     res
       .status(r.ok ? 200 : (r.status || 500))
@@ -259,9 +242,4 @@ appp.post('/api/chat-ventas', async (req, res) => {
     res.status(500).json({ ok: false, error: 'Error interno proxy chat-ventas' });
   }
 });
-
-// ...tus otras rutas /api
-
-// Arranque
-const port = process.env.PORT || 3000;
-appp.listen(port, () => console.log(`API escuchando en ${port}`));
+// ================================================
