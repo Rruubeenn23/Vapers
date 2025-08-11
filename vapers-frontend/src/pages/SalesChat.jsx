@@ -17,7 +17,7 @@ export default function SalesChat() {
   // ⚠️ Cambia esta URL según tu setup:
   // - Backend proxy recomendado: '/api/resumen-7dias-email'
   // - Directo a n8n (ejemplo): 'https://TU-N8N/render/webhook/resumen-7dias-email'
-  const EMAIL_URL = '/api/resumen-7dias-email';
+  const EMAIL_URL = 'https://TU-N8N/render/webhook/resumen-7dias-emai';
 
   async function onAsk(e) {
     e.preventDefault();
