@@ -301,4 +301,25 @@ app.post('/api/ventas-chat', async (req, res) => {
     res.status(500).json({ ok: false, error: 'Error interno proxy ventas-chat' });
   }
 });
-// ================================================
+
+app.post('/api/resumen-7dias-email', async (req, res) => {
+  try {
+    // URL pública del webhook de n8n para mandar el email
+    const N8N_WEBHOOK_URL = 'https://TU-N8N/render/webhook/resumen-7dias-email';
+
+    const r = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {})
+    });
+
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      return res.status(r.status).json({ ok: false, error: data.error || `HTTP ${r.status}` });
+    }
+
+    res.json({ ok: true, data });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
