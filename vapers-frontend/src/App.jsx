@@ -16,7 +16,7 @@ function App() {
           <Link to="/nuevo-vaper" style={{ marginRight: 10 }}>Nuevo Vaper</Link>
           <Link to="/estadisticas" style={{ marginRight: 10 }}>Estadísticas</Link>
           {/* <Link to="/finanzas">Finanzas</Link> */}
-          <Link to="/salesChat">Chat con IA</Link>
+          <Link to="/salesChat">IA</Link>
         </nav>
 
         <Routes>
