@@ -10,24 +10,24 @@ app.use(cors()); // permite cualquier origen en local
 
 
 const N8N_BASE_URL = process.env.N8N_BASE_URL || '';
-const N8N_CHAT_VENTAS_PATH = process.env.N8N_CHAT_VENTAS_PATH || '/webhook/chat-ventas';
+const N8N_CHAT_VENTAS_PATH = process.env.N8N_CHAT_VENTAS_PATH || '/webhook/ventas-chat';
 const N8N_URL = `${N8N_BASE_URL}${N8N_CHAT_VENTAS_PATH}`;
 
 app.get('/', (_req, res) => res.send('API local OK')); // sanity check
 
 // GET helper para que no te salga "Cannot GET" al probar en navegador
-app.get('/api/chat-ventas', (_req, res) => {
+app.get('/api/ventas-chat', (_req, res) => {
   res
     .status(405)
     .set('Content-Type', 'application/json')
-    .send(JSON.stringify({ ok: false, error: 'Usa POST en /api/chat-ventas' }));
+    .send(JSON.stringify({ ok: false, error: 'Usa POST en /api/ventas-chat' }));
 });
 
 // Ruta POST real
-app.post('/api/chat-ventas', async (req, res) => {
+app.post('/api/ventas-chat', async (req, res) => {
   try {
     const payload = req.body || {};
-    console.log('> /api/chat-ventas payload:', payload);
+    console.log('> /api/ventas-chat payload:', payload);
 
     const headers = { 'Content-Type': 'application/json' };
     if (process.env.N8N_AUTH_HEADER && process.env.N8N_AUTH_VALUE) {
@@ -49,8 +49,8 @@ app.post('/api/chat-ventas', async (req, res) => {
 
     res.status(r.ok ? 200 : (r.status || 500)).json(data);
   } catch (err) {
-    console.error('> Error interno proxy chat-ventas:', err);
-    res.status(500).json({ ok: false, error: 'Error interno proxy chat-ventas', detail: String(err?.message || err) });
+    console.error('> Error interno proxy ventas-chat:', err);
+    res.status(500).json({ ok: false, error: 'Error interno proxy ventas-chat', detail: String(err?.message || err) });
   }
 });
 

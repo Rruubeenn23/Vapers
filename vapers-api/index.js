@@ -201,16 +201,16 @@ app.get('/api/finanzas', async (req, res) => {
   res.json(data);
 });
 
-// ============ n8n: proxy chat-ventas ============
+// ============ n8n: proxy ventas-chat ============
 // Variables n8n (puedes ponerlas al principio del archivo si prefieres)
 const N8N_BASE_URL = process.env.N8N_BASE_URL || '';
-const N8N_CHAT_VENTAS_PATH = process.env.N8N_CHAT_VENTAS_PATH || '/webhook/chat-ventas';
+const N8N_CHAT_VENTAS_PATH = process.env.N8N_CHAT_VENTAS_PATH || '/webhook/ventas-chat';
 const N8N_URL = `${N8N_BASE_URL}${N8N_CHAT_VENTAS_PATH}`;
 
 // Nota: en Node 18+ existe fetch global (Render usa Node 22), así que no importes node-fetch.
 
 // Ruta proxy -> n8n
-app.post('/api/chat-ventas', async (req, res) => {
+app.post('/api/ventas-chat', async (req, res) => {
   try {
     const payload = req.body || {};
     const headers = { 'Content-Type': 'application/json' };
@@ -238,8 +238,8 @@ app.post('/api/chat-ventas', async (req, res) => {
       .set({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
       .json(data);
   } catch (err) {
-    console.error('Error /api/chat-ventas:', err);
-    res.status(500).json({ ok: false, error: 'Error interno proxy chat-ventas' });
+    console.error('Error /api/ventas-chat:', err);
+    res.status(500).json({ ok: false, error: 'Error interno proxy ventas-chat' });
   }
 });
 // ================================================
