@@ -305,7 +305,7 @@ app.post('/api/ventas-chat', async (req, res) => {
 app.post('/api/resumen-7dias-email', async (req, res) => {
   try {
     // URL pública del webhook de n8n para mandar el email
-    const N8N_WEBHOOK_URL = 'https://TU-N8N/render/webhook/resumen-7dias-email';
+    const N8N_WEBHOOK_URL = 'https://n8n-cjps.onrender.com/webhook/resumen-7dias-email';
 
     const r = await fetch(N8N_WEBHOOK_URL, {
       method: 'POST',
