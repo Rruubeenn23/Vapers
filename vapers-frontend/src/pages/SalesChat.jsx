@@ -30,7 +30,7 @@ export default function SalesChat() {
       <h2>Chat de Ventas</h2>
       <form onSubmit={onAsk} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
-          value={prompt}
+        //   value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Escribe tu pregunta (p. ej., ¿Quién ha comprado más?)"
           style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}
