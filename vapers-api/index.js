@@ -184,20 +184,52 @@ app.get('/api/vapers', async (req, res) => {
 
 app.get('/api/ventas', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    // 1) Ventas
+    const { data: ventas, error: e1 } = await supabase
       .from('ventas')
-      .select('*');
+      .select('*')
+      .order('fecha', { ascending: false });
 
-    if (error) {
-      return res.status(500).json({ error: error.message });
+    if (e1) {
+      console.error('Error ventas:', e1);
+      return res.status(500).json({ error: e1.message });
     }
 
-    res.json(data);
+    // 2) IDs únicos de producto
+    const ids = [...new Set((ventas || []).map(v => v.id_vaper).filter(Boolean))];
+
+    // 3) Catálogo solo para esos IDs
+    let map = {};
+    if (ids.length) {
+      const { data: vapers, error: e2 } = await supabase
+        .from('vapers')
+        .select('id, nombre')
+        .in('id', ids);
+
+      if (e2) {
+        console.warn('Error vapers (seguimos con IDs):', e2);
+      } else {
+        map = Object.fromEntries(vapers.map(v => [v.id, v.nombre]));
+      }
+    }
+
+    // 4) Respuesta con nombre embebido
+    const out = (ventas || []).map(v => ({
+      ...v,
+      producto_nombre: map[v.id_vaper] ?? null,
+      producto: {
+        id: v.id_vaper,
+        nombre: map[v.id_vaper] ?? null
+      }
+    }));
+
+    res.json(out);
   } catch (err) {
-    console.error('Error fetching ventas:', err);
+    console.error('Error /api/ventas:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
 
 app.post('/api/finanzas', async (req, res) => {
   const { titulo, precio, descripcion, tag } = req.body;
