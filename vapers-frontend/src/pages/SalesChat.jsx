@@ -35,7 +35,7 @@ export default function SalesChat() {
           placeholder="Escribe tu pregunta (p. ej., ¿Quién ha comprado más?)"
           style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}
         />
-        <input
+        {/* <input
           type="number"
           min={1}
           max={90}
@@ -43,7 +43,7 @@ export default function SalesChat() {
           onChange={(e) => setDays(parseInt(e.target.value || '7', 10))}
           style={{ width: 100, padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}
           title="Días a analizar"
-        />
+        /> */}
         <button
           type="submit"
           disabled={loading}
