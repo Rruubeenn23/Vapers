@@ -157,6 +157,44 @@ app.post('/ventas', async (req, res) => {
 
 app.get('/api/ventas', async (req, res) => {
   try {
+    // Ajusta el select a cómo esté definida tu FK/relación en Supabase
+    const { data, error } = await supabase
+      .from('ventas')
+      .select(`
+        id_vaper,
+        cantidad,
+        precio_unitario,
+        cliente,
+        fecha,
+        vapers: id_vaper ( id, nombre, imagen )
+      `);
+
+    if (error) {
+      console.error('Error supabase /api/ventas:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Aplana a { ..., producto: {id,nombre,imagen} }
+    const out = (data || []).map(v => ({
+      ...v,
+      producto: v.vapers ? {
+        id: v.vapers.id,
+        nombre: v.vapers.nombre,
+        imagen: v.vapers.imagen
+      } : null
+    }));
+
+    res.json(out);
+  } catch (err) {
+    console.error('Error fetching ventas:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+
+
+app.get('/api/ventas', async (req, res) => {
+  try {
     const { data, error } = await supabase
       .from('ventas')
       .select('*');
