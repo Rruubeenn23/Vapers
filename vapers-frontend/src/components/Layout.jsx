@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import '../styles/layout.css';
+import '../styles/Layout.css';
 
 function NavItem({ to, icon, label, onClick }) {
   const location = useLocation();
