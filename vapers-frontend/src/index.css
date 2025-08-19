@@ -1,4 +1,4 @@
-@import './styles/pages.css';
+@import './styles/Pages.css';
 :root {
   --bg: #0b1020;
   --surface: #0f152b;
@@ -120,4 +120,3 @@ h3 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
 
 /* Page sections default spacing */
 .section { margin-bottom: 28px; }
-@import './styles/pages.css';
