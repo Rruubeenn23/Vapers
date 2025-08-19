@@ -1,23 +1,27 @@
-// src/components/SalesChat.jsx
-import React, { useState } from 'react';
+// src/pages/SalesChat.jsx
+import React, { useEffect, useRef, useState } from 'react';
 import { chatVentas } from '../lib/chatVentas';
+import AutoTextarea from '../components/AutoTextArea';
+import '../styles/SalesChat.css';
 
 export default function SalesChat() {
+  // Estado original (sin cambios de lógica)
   const [prompt, setPrompt] = useState('¿Quién ha comprado más?');
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState(null);
   const [error, setError] = useState(null);
 
-  // --- Estado para el envío de email ---
+  // Envío de email (igual que antes)
   const [mailLoading, setMailLoading] = useState(false);
   const [mailMsg, setMailMsg] = useState(null);
   const [mailErr, setMailErr] = useState(null);
 
-  // ⚠️ Cambia esta URL según tu setup:
-  // - Backend proxy recomendado: '/api/resumen-7dias-email'
-  // - Directo a n8n (ejemplo): 'https://TU-N8N/render/webhook/resumen-7dias-email'
+  // Mantengo tu URL tal cual
   const EMAIL_URL = 'https://n8n-cjps.onrender.com/webhook/resumen-7dias-email';
+
+  // Ref para auto-scroll de mensajes/resultado
+  const listRef = useRef(null);
 
   async function onAsk(e) {
     e.preventDefault();
@@ -26,7 +30,7 @@ export default function SalesChat() {
     setResp(null);
     try {
       const data = await chatVentas({ prompt, days });
-      if (!data.ok) setError(data.error || 'Error desconocido');
+      if (!data?.ok) setError(data?.error || 'Error desconocido');
       setResp(data);
     } catch (err) {
       setError(err?.message || 'Error de red');
@@ -41,10 +45,8 @@ export default function SalesChat() {
     setMailErr(null);
     try {
       const body = {
-        // Puedes ajustar destinatario/asunto desde aquí o desde tu web
         toEmail: 'rubencereceda23@gmail.com',
         subject: 'Resumen ventas últimos 7 días',
-        // Opcional: periodo explícito
         // from: new Date(Date.now() - 7*24*60*60*1000).toISOString(),
         // to: new Date().toISOString(),
       };
@@ -67,123 +69,183 @@ export default function SalesChat() {
     }
   }
 
+  // Auto-scroll al actualizar el resultado
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [resp]);
+
+  // Atajos de teclado para el textarea:
+  // Enter -> enviar; Ctrl/Cmd+Enter -> salto de línea; Esc -> limpiar
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const el = e.target;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const next = prompt.slice(0, start) + '\n' + prompt.slice(end);
+        setPrompt(next);
+        requestAnimationFrame(() => {
+          el.selectionStart = el.selectionEnd = start + 1;
+        });
+        return;
+      }
+      e.preventDefault();
+      if (!loading) onAsk(e);
+    } else if (e.key === 'Escape') {
+      setPrompt('');
+    }
+  }
+
   return (
-    <div style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'system-ui, Arial, sans-serif' }}>
-      <h2>Chat de Ventas</h2>
-
-      <form onSubmit={onAsk} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          // value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Escribe tu pregunta (p. ej., ¿Quién ha comprado más?)"
-          style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: '10px 16px',
-            borderRadius: 8,
-            border: '1px solid #111',
-            background: loading ? '#999' : '#111',
-            color: '#fff',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {loading ? 'Consultando…' : 'Preguntar'}
-        </button>
-
-        {/* Botón para enviar el resumen por email */}
-        <button
-          type="button"
-          disabled={mailLoading}
-          onClick={sendResumenEmail}
-          style={{
-            padding: '10px 16px',
-            borderRadius: 8,
-            border: '1px solid #111',
-            background: mailLoading ? '#e5e7eb' : '#fff',
-            color: '#111',
-            cursor: mailLoading ? 'not-allowed' : 'pointer'
-          }}
-          title="Envía el resumen de los últimos 7 días al correo configurado"
-        >
-          {mailLoading ? 'Enviando…' : 'Enviar resumen 7 días'}
-        </button>
-      </form>
-
-      {/* Mensajes del envío por email */}
-      {mailErr && (
-        <div style={{ marginTop: 12, color: '#b91c1c', background: '#fee2e2', padding: 10, borderRadius: 8 }}>
-          {mailErr}
+    <div className="container">
+      <div className="page-header">
+        <h1 className="page-title">Sales Chat</h1>
+        <div className="page-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setPrompt('¿Quién ha comprado más?')}
+            title="Restaurar ejemplo"
+          >
+            Sugerencia
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setDays((d) => (d === 7 ? 30 : 7))}
+            title="Alternar 7/30 días"
+          >
+            Rango: {days} días
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={mailLoading}
+            onClick={sendResumenEmail}
+            title="Enviar resumen de los últimos 7 días al correo"
+          >
+            {mailLoading ? 'Enviando…' : 'Enviar resumen 7 días'}
+          </button>
         </div>
-      )}
-      {mailMsg && (
-        <div style={{ marginTop: 12, color: '#065f46', background: '#d1fae5', padding: 10, borderRadius: 8 }}>
-          {mailMsg}
-        </div>
-      )}
+      </div>
 
-      {error && (
-        <div style={{ marginTop: 16, color: '#b91c1c', background: '#fee2e2', padding: 12, borderRadius: 8 }}>
-          {error}
-        </div>
-      )}
-
-      {resp && (
-        <div style={{ marginTop: 24, border: '1px solid #eee', borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ background: '#111', color: '#fff', padding: 12 }}>
-            Resultado {resp.intent ? `— ${resp.intent}` : ''}
-          </div>
-          <div style={{ padding: 16 }}>
-            <p><strong>Respuesta:</strong> {resp.answer || '(sin texto)'}</p>
-
-            {resp.period && (
-              <p>
-                <strong>Periodo:</strong>{' '}
-                {new Date(resp.period.from).toLocaleString('es-ES')} — {new Date(resp.period.to).toLocaleString('es-ES')}
-              </p>
+      <div className="section card" style={{ padding: 16 }}>
+        <form onSubmit={onAsk} className="chat-wrap" role="search">
+          <div className="chat-messages" ref={listRef} aria-live="polite">
+            {!resp && !error && (
+              <div className="help-hint">
+                Haz una pregunta sobre tus ventas (por ejemplo: <em>“¿Quién ha comprado más?”</em>).
+              </div>
             )}
 
-            {resp.metrics && (
-              <ul>
-                <li>Ingreso total: {Number(resp.metrics.ingresoTotal || 0).toFixed(2)} €</li>
-                <li>Nº ventas: {resp.metrics.numVentas}</li>
-                <li>Unidades: {resp.metrics.unidades}</li>
-                <li>Ticket medio: {Number(resp.metrics.ticketMedio || 0).toFixed(2)} €</li>
-              </ul>
+            {error && (
+              <div className="msg">
+                <div className="bubble" style={{ borderColor: 'rgba(239,68,68,.45)', background: 'rgba(239,68,68,.12)' }}>
+                  {error}
+                </div>
+              </div>
             )}
 
-            {resp.topCliente && (
-              <p><strong>Top cliente:</strong> {resp.topCliente.nombre} — {Number(resp.topCliente.gasto || 0).toFixed(2)} €</p>
-            )}
+            {resp && (
+              <div className="msg">
+                <div className="bubble" style={{ width: '100%' }}>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <div className="badge">Resultado {resp.intent ? `— ${resp.intent}` : ''}</div>
+                    <div><strong>Respuesta:</strong> {resp.answer || '(sin texto)'}</div>
 
-            {Array.isArray(resp.topProductos) && resp.topProductos.length > 0 && (
-              <>
-                <h4>Top productos</h4>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                  <thead>
-                    <tr style={{ background: '#f3f4f6' }}>
-                      <th style={{ border: '1px solid #e5e7eb', padding: 8, textAlign: 'left' }}>Producto</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: 8, textAlign: 'right' }}>Unidades</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: 8, textAlign: 'right' }}>Ingresos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resp.topProductos.map((p, idx) => (
-                      <tr key={idx}>
-                        <td style={{ border: '1px solid #e5e7eb', padding: 8 }}>{p.producto}</td>
-                        <td style={{ border: '1px solid #e5e7eb', padding: 8, textAlign: 'right' }}>{p.unidades}</td>
-                        <td style={{ border: '1px solid #e5e7eb', padding: 8, textAlign: 'right' }}>{Number(p.ingresos || 0).toFixed(2)} €</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
+                    {resp.period && (
+                      <div>
+                        <strong>Periodo:</strong>{' '}
+                        {new Date(resp.period.from).toLocaleString('es-ES')} —{' '}
+                        {new Date(resp.period.to).toLocaleString('es-ES')}
+                      </div>
+                    )}
+
+                    {resp.metrics && (
+                      <ul style={{ margin: 0 }}>
+                        <li>Ingreso total: {Number(resp.metrics.ingresoTotal || 0).toFixed(2)} €</li>
+                        <li>Nº ventas: {resp.metrics.numVentas}</li>
+                        <li>Unidades: {resp.metrics.unidades}</li>
+                        <li>Ticket medio: {Number(resp.metrics.ticketMedio || 0).toFixed(2)} €</li>
+                      </ul>
+                    )}
+
+                    {resp.topCliente && (
+                      <div>
+                        <strong>Top cliente:</strong> {resp.topCliente.nombre} —{' '}
+                        {Number(resp.topCliente.gasto || 0).toFixed(2)} €
+                      </div>
+                    )}
+
+                    {Array.isArray(resp.topProductos) && resp.topProductos.length > 0 && (
+                      <>
+                        <h3 style={{ marginTop: 8 }}>Top productos</h3>
+                        <div className="table-wrap">
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>Producto</th>
+                                <th style={{ textAlign: 'right' }}>Unidades</th>
+                                <th style={{ textAlign: 'right' }}>Ingresos</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {resp.topProductos.map((p, idx) => (
+                                <tr key={idx}>
+                                  <td>{p.producto}</td>
+                                  <td style={{ textAlign: 'right' }}>{p.unidades}</td>
+                                  <td style={{ textAlign: 'right' }}>{Number(p.ingresos || 0).toFixed(2)} €</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      )}
+
+          {/* Barra de entrada con textarea auto-creciente y atajos */}
+          <div>
+            <div className="chat-inputbar">
+              <AutoTextarea
+                value={prompt}
+                onChange={setPrompt}
+                onKeyDown={handleKeyDown}
+                minRows={1}
+                maxRows={8}
+                className="chat-textarea"
+                placeholder="Escribe tu mensaje…"
+              />
+              <button type="submit" className="btn primary send-btn" disabled={loading}>
+                {loading ? 'Consultando…' : 'Enviar'}
+              </button>
+            </div>
+            <div className="help-hint" style={{ marginTop: 6 }}>
+              Atajos: <span className="kbd">Enter</span> enviar ·{' '}
+              <span className="kbd">Ctrl/Cmd + Enter</span> salto de línea · <span className="kbd">Esc</span> limpiar
+            </div>
+          </div>
+        </form>
+
+        {/* Mensajes del envío por email */}
+        {mailErr && (
+          <div style={{ marginTop: 12, color: '#b91c1c', background: '#fee2e2', padding: 10, borderRadius: 8 }}>
+            {mailErr}
+          </div>
+        )}
+        {mailMsg && (
+          <div style={{ marginTop: 12, color: '#065f46', background: '#d1fae5', padding: 10, borderRadius: 8 }}>
+            {mailMsg}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

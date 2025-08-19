@@ -1,0 +1,30 @@
+/* Cabeceras y rejillas de KPIs */
+.page-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.page-title { font-size:24px; font-weight:800; letter-spacing:-0.02em; }
+.page-actions { display:flex; gap:8px; }
+
+.kpis-grid {
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap:12px;
+}
+@media (max-width: 1200px) { .kpis-grid { grid-template-columns: repeat(3,1fr); } }
+@media (max-width: 900px)  { .kpis-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 600px)  { .kpis-grid { grid-template-columns: 1fr; } }
+
+.kpi-card {
+  padding:16px;
+  border-radius:16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.00));
+  border:1px solid rgba(255,255,255,0.08);
+}
+.kpi-label { color: var(--muted); font-size:13px; margin-bottom:8px; }
+.kpi-value { font-size:22px; font-weight:800; }
+
+/* Tablas responsivas */
+.table-wrap { width:100%; overflow:auto; border-radius:14px; border:1px solid #1e2747; }
+.table { min-width: 820px; } /* scrollea en móvil si hace falta */
+.table th { position: sticky; top: 0; z-index: 1; }
+
+/* Secciones */
+.section { margin-bottom: 24px; }

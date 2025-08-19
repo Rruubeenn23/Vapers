@@ -1,96 +1,16 @@
-.estadisticas-container {
-  padding: 1.5rem;
-  font-family: 'Inter', sans-serif;
-  background-color: #f1f5f9;
-  min-height: 100vh;
-  color: #1e293b;
-}
+/* Se apoya en pages.css para kpis, tablas, etc. Aquí afinamos detalles. */
 
-h2, h3 {
-  color: #0f172a;
-  margin-bottom: 1rem;
-  font-weight: 700;
-}
+h2 { margin: 0 0 10px; }
 
-.stats-resumen {
+.kpi-card {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 2rem;
+  gap: 6px;
 }
 
-.stat-card {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-  padding: 1.5rem 1.2rem;
-  text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+.th-sort {
+  cursor: pointer;
+  user-select: none;
 }
-
-.stat-card h3 {
-  font-size: 0.95rem;
-  color: #475569;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-}
-
-.stat-card p {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-}
-
-.ventas-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #ffffff;
-  border-radius: 1rem;
-  overflow: hidden;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
-}
-
-.ventas-table th,
-.ventas-table td {
-  padding: 1rem 1.25rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.ventas-table th {
-  background-color: #f1f5f9;
-  color: #334155;
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: 0.4px;
-}
-
-.ventas-table td {
-  font-size: 0.95rem;
-  color: #1e293b;
-}
-
-.ventas-table tr:hover {
-  background-color: #f9fafb;
-}
-
-@media (max-width: 768px) {
-  .ventas-table th,
-  .ventas-table td {
-    padding: 0.75rem;
-    font-size: 0.9rem;
-  }
-
-  .stat-card h3 {
-    font-size: 0.85rem;
-  }
-
-  .stat-card p {
-    font-size: 1.3rem;
-  }
+.th-sort:hover {
+  background: #0f1835;
 }

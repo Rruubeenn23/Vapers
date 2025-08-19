@@ -1,64 +1,123 @@
+@import './styles/pages.css';
 :root {
-  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  line-height: 1.6;
-  font-weight: 400;
-  color: #212121;
-  background-color: #f5f5f5;
+  --bg: #0b1020;
+  --surface: #0f152b;
+  --elev: #131a36;
+  --text: #e6eaf3;
+  --muted: #a5b0c2;
+  --primary: #7c5cff;
+  --primary-600: #6a4afd;
+  --primary-700: #5a3bf2;
+  --accent: #22d3ee;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --ring: 0 0 0 3px rgba(124, 92, 255, 0.25);
+}
 
-  text-rendering: optimizeLegibility;
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+html, body {
+  padding: 0; margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+  background: radial-gradient(1200px 800px at 80% -20%, rgba(124, 92, 255, 0.25), transparent 50%),
+              radial-gradient(900px 600px at -10% 30%, rgba(34, 211, 238, 0.18), transparent 45%),
+              var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  --primary: #6366f1;
-  --secondary: #4f46e5;
-  --accent: #f97316;
-  --bg-light: #ffffff;
-  --text-dark: #1f2937;
-  --card-radius: 12px;
-  --shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-light);
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+
+/* Basic utilities */
+.container { max-width: 1120px; margin: 0 auto; padding: 24px; }
+
+/* Inputs */
+input, select, textarea {
+  width: 100%;
+  background: #0e142a;
+  border: 1px solid #1e2747;
+  color: var(--text);
+  border-radius: 12px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+input::placeholder, textarea::placeholder { color: #7781a1; }
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
 }
 
-a {
-  color: var(--primary);
-  text-decoration: none;
-  transition: color 0.2s ease-in-out;
-}
-
-a:hover {
-  color: var(--secondary);
-}
-
-h1, h2, h3, h4, h5 {
-  margin: 0.5em 0;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-button {
-  padding: 0.6em 1.2em;
-  border-radius: 8px;
-  border: none;
-  background-color: var(--primary);
-  color: white;
-  font-weight: 500;
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  border: 1px solid #2c365f;
+  background: linear-gradient(180deg, #1a2140, #121a36);
+  color: var(--text);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: transform .06s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.btn:hover { border-color: var(--primary-600); box-shadow: 0 10px 24px rgba(124, 92, 255, 0.12); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: linear-gradient(180deg, var(--primary), var(--primary-700)); border-color: transparent; }
+.btn.ghost { background: transparent; border: 1px dashed #33406c; }
+
+/* Cards */
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.30);
+  backdrop-filter: blur(8px);
 }
 
-button:hover {
-  background-color: var(--secondary);
+/* Tables */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #0e142a;
+  border: 1px solid #1e2747;
+}
+.table th, .table td {
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #1a2242;
+}
+.table th {
+  background: #0f1730;
+  color: #b7c2df;
+  font-weight: 600;
+}
+.table tr:hover td { background: #0f1835; }
+
+/* Tags */
+.tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: #11193a; color: #c2cae6; border: 1px solid #23305e; }
+
+/* Badges with gradients */
+.badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  color: #0a0f21;
 }
 
-@media (max-width: 600px) {
-  html {
-    font-size: 90%;
-  }
-}
+/* Headings */
+h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 16px; }
+h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 14px; }
+h3 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
+
+/* Page sections default spacing */
+.section { margin-bottom: 28px; }
+@import './styles/pages.css';

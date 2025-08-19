@@ -1,146 +1,120 @@
-.vender-container {
-  padding: 1.5rem;
-  text-align: center;
-  background-color: #f1f5f9;
-  min-height: 100vh;
-  font-family: 'Inter', sans-serif;
-  color: #1e293b;
-}
+/* Página */
+.vender-page {}
 
-.vender-container h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  color: #0f172a;
-}
-
-.vaper-grid {
+/* Grid de catálogo */
+.catalog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
 }
+@media (max-width: 1200px) { .catalog-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .catalog-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .catalog-grid { grid-template-columns: 1fr; } }
 
-.vaper-card {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  padding: 1rem;
+.catalog-card {
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  overflow: hidden;
+  transition: transform .08s ease, border-color .2s ease, box-shadow .2s ease;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.catalog-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124,92,255,0.35);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.35);
 }
 
-.vaper-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+.card-media {
+  position: relative;
+  background: #0f142b;
+  display: grid;
+  place-items: center;
+  height: 200px;
 }
-
-.vaper-card img {
-  width: 100%;
-  height: 180px;
+.card-media img {
+  max-height: 170px;
+  width: auto;
   object-fit: contain;
-  margin-bottom: 0.75rem;
-  border-radius: 0.5rem;
 }
 
-.vaper-card h3 {
-  font-size: 1.1rem;
-  color: #1e293b;
-  margin: 0.5rem 0;
-  font-weight: 600;
+.stock-badge {
+  position: absolute;
+  top: 10px; right: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid #23305e;
+  background: #11193a;
+  color: #c2cae6;
+}
+.stock-badge.ok { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.15); color:#d1fae5; }
+.stock-badge.ko { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.15); color:#fecaca; }
+
+/* “Recuadro circular” para el nombre del producto */
+.circle-name {
+  position: absolute;
+  bottom: 10px; left: 10px;
+  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(124,92,255,0.35);
+  background: rgba(124,92,255,0.15);
+  color: #e9e6ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.vaper-card p {
-  font-size: 0.95rem;
-  color: #475569;
-}
+.card-body { padding: 12px 14px; }
+.card-title { font-weight: 700; letter-spacing: -.01em; margin-bottom: 6px; }
+.card-meta { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* Modal */
-.modal-overlay {
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 70; }
+
+.modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(15, 23, 42, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
+  z-index: 80;
+  top: 50%;
+  left: 50%;
+  width: min(720px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  background: #0e142a;                 /* opaco */
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  overflow: hidden;
 }
 
-.modal-content {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  padding: 2rem;
-  width: 90%;
-  max-width: 420px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
-}
+.modal-head { padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.modal-body { padding: 16px; display: grid; gap: 16px; }
 
-.modal-content h3 {
-  margin-bottom: 1.25rem;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #0f172a;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
 }
+@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
 
-.form-group {
-  margin-bottom: 1.25rem;
-  text-align: left;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #334155;
-}
-
+.form-group { display: grid; gap: 6px; }
+.form-group label { color: var(--muted); font-size: 13px; }
 .form-group input {
-  width: 100%;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid #cbd5e1;
-  font-size: 1rem;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background: #0f142b; border: 1px solid #273158; color: var(--text);
+  padding: 10px 12px; border-radius: 12px; outline: none;
 }
+.form-group input:focus { border-color: var(--primary); box-shadow: var(--ring); }
 
-.modal-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 1.75rem;
+.modal-actions { display:flex; justify-content:flex-end; gap:10px; }
+.page-actions input[type="text"].btn,
+.page-actions input[type="search"].btn {
+  background: #0f142b;
+  border: 1px solid #273158;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
 }
-
-.modal-buttons button {
-  flex: 1;
-  padding: 0.65rem 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.modal-buttons button[type="submit"] {
-  background-color: #22c55e;
-  color: white;
-}
-
-.modal-buttons button[type="submit"]:hover {
-  background-color: #16a34a;
-}
-
-.modal-buttons button[type="button"] {
-  background-color: #ef4444;
-  color: white;
-}
-
-.modal-buttons button[type="button"]:hover {
-  background-color: #dc2626;
+.page-actions input.btn:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
 }
