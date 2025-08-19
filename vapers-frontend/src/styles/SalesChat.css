@@ -1,24 +1,147 @@
-.chat-wrap { display:grid; grid-template-rows: 1fr auto; gap:12px; height: calc(100dvh - 170px); }
-.chat-messages { overflow:auto; padding:12px; border-radius:14px; border:1px solid #1e2747; background:#0e142a; }
-.msg { display:flex; gap:10px; margin-bottom:12px; }
-.msg .bubble {
-  padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.08);
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.00));
-  max-width:min(80%, 760px);
+/* Contenedor principal */
+.saleschat-page {
+  max-width: 720px;
+  margin: 2rem auto;
+  display: grid;
+  gap: 1.5rem;
 }
-.msg.user   { justify-content:flex-end; }
-.msg.user .bubble { background: linear-gradient(180deg, rgba(124,92,255,0.18), rgba(124,92,255,0.10)); border-color: rgba(124,92,255,0.40); }
 
-.chat-inputbar {
-  display:flex; align-items:flex-end; gap:10px;
-  padding:10px; border-radius:16px; border:1px solid #1e2747; background:#0f142b;
+/* Título */
+.saleschat-page h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
 }
-.chat-textarea {
-  flex:1; resize:none; max-height: 240px;
-  background:#0f142b; border:1px solid #273158; color:var(--text);
-  padding:12px 12px; border-radius:12px; outline:none;
+
+/* Formulario */
+.saleschat-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
 }
-.chat-textarea:focus { border-color: var(--primary); box-shadow: var(--ring); }
-.send-btn { min-width:110px; }
-.kbd { display:inline-block; padding:1px 6px; border:1px solid #31406e; border-bottom-width:2px; border-radius:6px; font-size:12px; color:#c9d4ef; }
-.help-hint { color:var(--muted); font-size:12px; }
+
+/* Input de texto con auto-expansión */
+.saleschat-input {
+  flex: 1;
+  min-height: 44px;
+  resize: none; /* controlamos tamaño vía JS */
+  padding: 12px 14px;
+  border: 1px solid #273158;
+  border-radius: 12px;
+  font-size: 16px; /* evita zoom en móvil */
+  line-height: 1.4;
+  background: #0f142b;
+  color: var(--text);
+  outline: none;
+}
+.saleschat-input:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+/* Botones */
+.saleschat-form .btn {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #273158;
+  background: #1a2140;
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.saleschat-form .btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.saleschat-form .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Resultados */
+.saleschat-result {
+  border: 1px solid #1e2747;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.saleschat-result-head {
+  background: #111;
+  color: #fff;
+  padding: 12px 14px;
+  font-weight: 600;
+}
+
+.saleschat-result-body {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.saleschat-result ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 6px 0;
+}
+
+/* Tablas de productos */
+.saleschat-result table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 500px;
+}
+.saleschat-result thead {
+  background: #0f1730;
+  color: #b7c2df;
+}
+.saleschat-result th,
+.saleschat-result td {
+  border: 1px solid #1a2242;
+  padding: 8px 10px;
+}
+.saleschat-result tbody tr:hover td {
+  background: #0f1835;
+}
+.saleschat-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Alertas */
+.saleschat-msg {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.saleschat-msg.error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.saleschat-msg.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* === Responsividad === */
+@media (max-width: 640px) {
+  .saleschat-form {
+    flex-direction: column;
+  }
+  .saleschat-input {
+    width: 100%;
+    font-size: 16px; /* aún en móvil, evita zoom */
+  }
+  .saleschat-form .btn {
+    width: 100%;
+    text-align: center;
+  }
+  .saleschat-result-body {
+    font-size: 14px;
+  }
+}
