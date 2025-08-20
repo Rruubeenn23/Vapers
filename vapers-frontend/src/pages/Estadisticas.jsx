@@ -175,10 +175,8 @@ const Estadisticas = () => {
             <tbody>
               {filteredSorted.map((venta) => (
                 <tr key={venta.id}>
-                  <td>{venta.id}</td>
                   <td>{venta.cliente}</td>
                   <td>{productoNombre(venta.id_vaper)}</td>
-                  <td style={{ textAlign: 'right' }}>{venta.precio_unitario}</td>
                   <td style={{ textAlign: 'right' }}>{venta.cantidad}</td>
                   <td style={{ textAlign: 'right' }}>{venta.total}</td>
                   <td>{new Date(venta.fecha).toLocaleString()}</td>
