@@ -161,12 +161,8 @@ const Estadisticas = () => {
           <table className="table">
             <thead>
               <tr>
-                <th onClick={() => toggleSort('id')} className="th-sort">ID {arrow('id')}</th>
                 <th onClick={() => toggleSort('cliente')} className="th-sort">Cliente {arrow('cliente')}</th>
                 <th onClick={() => toggleSort('producto')} className="th-sort">Producto {arrow('producto')}</th>
-                <th onClick={() => toggleSort('precio_unitario')} className="th-sort" style={{ textAlign: 'right' }}>
-                  Precio Unitario (€) {arrow('precio_unitario')}
-                </th>
                 <th onClick={() => toggleSort('cantidad')} className="th-sort" style={{ textAlign: 'right' }}>
                   Cantidad {arrow('cantidad')}
                 </th>
