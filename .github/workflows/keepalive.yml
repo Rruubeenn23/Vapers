@@ -8,6 +8,10 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Curl ping
+      - name: Curl ping 1
         run: |
-          curl -sS -m 10 -o /dev/null -w "%{http_code}\n" https://TU-DOMINIO-RENDER.onrender.com/health || true
+          curl -sS -m 10 -o /dev/null -w "API 1 -> %{http_code}\n" https://api-vapers.onrender.com/api/ventas || true
+
+      - name: Curl ping 2
+        run: |
+          curl -sS -m 10 -o /dev/null -w "API 2 -> %{http_code}\n" https://n8n-cjps.onrender.com/home/workflows || true
