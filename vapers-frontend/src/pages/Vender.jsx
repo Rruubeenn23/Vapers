@@ -11,10 +11,10 @@ function Vender() {
   const [filterText, setFilterText] = useState('');
 
   const [form, setForm] = useState({
-    cantidad: 1,
-    precio_unitario: 0,
+    cantidad: '',
+    precio_unitario: '',
     cliente: '',
-    total: 0,
+    total: '',
   });
 
   useEffect(() => {
