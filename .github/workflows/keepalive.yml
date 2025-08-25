@@ -1,0 +1,17 @@
+name: Keep Render Awake
+on:
+  schedule:
+    - cron: "*/1 * * * *" # cada 5 minutos (UTC)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl ping 1
+        run: |
+          curl -sS -m 10 -o /dev/null -w "API 1 -> %{http_code}\n" https://api-vapers.onrender.com/api/ventas || true
+
+      - name: Curl ping 2
+        run: |
+          curl -sS -m 10 -o /dev/null -w "API 2 -> %{http_code}\n" https://n8n-cjps.onrender.com/home/workflows || true
