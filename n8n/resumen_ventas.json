@@ -1,0 +1,214 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resumen-7dias-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5eeadaa1-ce54-4025-9850-e2aed9b242d0",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -160
+      ],
+      "webhookId": "113f2f7c-97de-40fd-9e2a-284053501bae"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normaliza entrada y periodo\nconst b = $json.body || $json || {};\nconst toEmail = (b.toEmail || 'rubencereceda23@gmail.com') + '';\nconst subject = (b.subject || 'Resumen ventas últimos 7 días') + '';\n\nfunction iso(d){ return new Date(d).toISOString(); }\nconst now = new Date();\nconst defaultFrom = new Date(Date.now() - 7*24*60*60*1000);\nlet from = b.from ? new Date(b.from) : defaultFrom;\nlet to = b.to ? new Date(b.to) : now;\nif (isNaN(from)) from = defaultFrom;\nif (isNaN(to)) to = now;\n\nreturn [{ json: { toEmail, subject, periodo: { from: iso(from), to: iso(to) } } }];"
+      },
+      "id": "8d370ec6-cdad-430f-99ff-2922f7689104",
+      "name": "Preparar parámetros",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api-vapers.onrender.com/api/ventas",
+        "options": {}
+      },
+      "id": "ed67668c-3041-4601-981e-2fd37fecbb16",
+      "name": "Obtener ventas (todas)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -256
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "7357c5d6-dcfe-416e-9196-590aa888148d",
+      "name": "Merge ventas + params",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Filtrar por periodo recibido y calcular métricas (determinista)\nconst params = $json || {};\nconst periodo = params.periodo || {};\nconst desde = new Date(periodo.from || new Date(Date.now() - 7*24*60*60*1000));\nconst hasta = new Date(periodo.to || new Date());\n\nconst todas = Array.isArray(params.data) ? params.data : (Array.isArray(params.ventas) ? params.ventas : (Array.isArray($json) ? $json : []));\n\nconst ventas = todas.filter(v => {\n  if (!v.fecha) return false;\n  const d = new Date(v.fecha);\n  return d && !isNaN(d) && d >= desde && d <= hasta;\n});\n\nlet ingresoTotal = 0; let numVentas = ventas.length; let unidades = 0;\nconst porProducto = new Map();\nconst porCliente = new Map();\n\nfor (const v of ventas) {\n  const cantidad = Number(v.cantidad ?? 1);\n  const total = v.total != null ? Number(v.total) : Number(cantidad * Number(v.precio_unitario ?? 0));\n  ingresoTotal += isNaN(total) ? 0 : total;\n  unidades += isNaN(cantidad) ? 0 : cantidad;\n\n  // nombre desde API de ventas (join ya hecho en backend)\n  const nombreProducto = v.producto?.nombre || v.producto_nombre || v.nombre || v.sku || (v.id_vaper ? `Producto ${v.id_vaper}` : 'Desconocido');\n  const p = porProducto.get(nombreProducto) || { unidades: 0, ingresos: 0 };\n  p.unidades += isNaN(cantidad) ? 0 : cantidad;\n  p.ingresos += isNaN(total) ? 0 : total;\n  porProducto.set(nombreProducto, p);\n\n  const cKey = (v.cliente ?? v.usuario ?? 'Desconocido') + '';\n  porCliente.set(cKey, (porCliente.get(cKey) || 0) + (isNaN(total) ? 0 : total));\n}\n\nconst ticketMedio = numVentas > 0 ? ingresoTotal / numVentas : 0;\nconst topProductos = [...porProducto.entries()].map(([producto, s]) => ({ producto, ...s })).sort((a,b)=> b.ingresos - a.ingresos).slice(0,5);\nconst topClientePair = [...porCliente.entries()].sort((a,b)=> b[1] - a[1])[0] || [null, 0];\n\nreturn [{ json: {\n  toEmail: params.toEmail,\n  subject: params.subject,\n  periodo: { from: desde.toISOString(), to: hasta.toISOString() },\n  resumen: { ingresoTotal, numVentas, unidades, ticketMedio },\n  topProductos,\n  topCliente: { nombre: topClientePair[0], gasto: topClientePair[1] },\n  ventas\n} }];"
+      },
+      "id": "9fb5a071-8905-4cd2-aa14-13f54d98fd2d",
+      "name": "Filtrar + Agregar (por periodo)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Construir HTML con CSS inline para email\nconst d = $json;\nconst r = d.resumen || {};\nconst tp = d.topProductos || [];\nconst tc = d.topCliente || {};\n\nconst nf = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst money = (n)=> nf.format(Number(n||0));\nconst esc = (s)=> String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n\nconst periodoDesde = new Date(d.periodo?.from || '').toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });\nconst periodoHasta = new Date(d.periodo?.to || '').toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });\n\nconst rows = tp.length ? tp.map((p,i)=> `\n  <tr>\n    <td style=\"border:1px solid #e5e7eb; padding:10px; text-align:center;\">${i+1}</td>\n    <td style=\"border:1px solid #e5e7eb; padding:10px;\">${esc(p.producto)}</td>\n    <td style=\"border:1px solid #e5e7eb; padding:10px; text-align:right;\">${p.unidades ?? 0}</td>\n    <td style=\"border:1px solid #e5e7eb; padding:10px; text-align:right;\">${money(p.ingresos)}</td>\n  </tr>`).join('\\n') : `\n  <tr>\n    <td colspan=\"4\" style=\"border:1px solid #e5e7eb; padding:10px; text-align:center; color:#6b7280;\">Sin datos en el periodo</td>\n  </tr>`;\n\nconst html = `\n<div style=\"font-family: Arial, sans-serif; color: #111827; padding: 24px; background:#f9fafb;\">\n  <div style=\"max-width:680px; margin:0 auto; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;\">\n    <div style=\"background:#111827; color:#ffffff; padding:18px 24px;\">\n      <h2 style=\"margin:0; font-size:20px;\">Resumen de ventas</h2>\n      <div style=\"font-size:13px; opacity:.85; margin-top:4px;\">Desde ${esc(periodoDesde)} hasta ${esc(periodoHasta)}</div>\n    </div>\n\n    <div style=\"padding:24px;\">\n      <div style=\"display:flex; gap:16px; flex-wrap:wrap;\">\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Ingresos totales</div>\n          <div style=\"font-size:20px; font-weight:700;\">${money(r.ingresoTotal)}</div>\n        </div>\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Nº de ventas</div>\n          <div style=\"font-size:20px; font-weight:700;\">${r.numVentas ?? 0}</div>\n        </div>\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Unidades vendidas</div>\n          <div style=\"font-size:20px; font-weight:700;\">${r.unidades ?? 0}</div>\n        </div>\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Ticket medio</div>\n          <div style=\"font-size:20px; font-weight:700;\">${money(r.ticketMedio)}</div>\n        </div>\n      </div>\n\n      <h3 style=\"margin:24px 0 8px 0; font-size:16px;\">Top productos</h3>\n      <table style=\"border-collapse: collapse; width: 100%; font-size:14px;\">\n        <thead>\n          <tr style=\"background:#f3f4f6;\">\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:center; width:50px;\">#</th>\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:left;\">Producto</th>\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:right; width:120px;\">Unidades</th>\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:right; width:140px;\">Ingresos</th>\n          </tr>\n        </thead>\n        <tbody>\n          ${rows}\n        </tbody>\n      </table>\n\n      <h3 style=\"margin:24px 0 8px 0; font-size:16px;\">Top cliente</h3>\n      <div style=\"border:1px solid #e5e7eb; border-radius:10px; padding:14px; font-size:14px;\">\n        <div><strong>Nombre:</strong> ${esc(tc.nombre)}</div>\n        <div><strong>Gasto:</strong> ${money(tc.gasto)}</div>\n      </div>\n\n      <div style=\"color:#6b7280; font-size:12px; margin-top:24px;\">Este informe ha sido generado automáticamente por n8n.</div>\n    </div>\n  </div>\n</div>`;\n\nreturn [{ json: { html, toEmail: d.toEmail, subject: d.subject, periodo: d.periodo, resumen: d.resumen, topProductos: d.topProductos, topCliente: d.topCliente } }];"
+      },
+      "id": "7bee6946-de09-4375-9fc3-3c47f14ebf52",
+      "name": "Construir HTML (CSS inline)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "Ventas <rubencereceda23@gmail.com>",
+        "toEmail": "=rubencereceda23@gmail.com",
+        "subject": "=Ventas Semanales",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "dd199ffc-f3bb-4c41-bd1f-14f57d266209",
+      "name": "Enviar Email (SMTP)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -208
+      ],
+      "webhookId": "bf13c150-764e-4ae5-9c46-1dc8146333fc",
+      "credentials": {
+        "smtp": {
+          "id": "xbFMpH2YQb8CvU1c",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "359585d7-7c36-4bb8-a433-9a11137522e5",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -208
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar parámetros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar parámetros": {
+      "main": [
+        [
+          {
+            "node": "Obtener ventas (todas)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge ventas + params",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Obtener ventas (todas)": {
+      "main": [
+        [
+          {
+            "node": "Merge ventas + params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge ventas + params": {
+      "main": [
+        [
+          {
+            "node": "Filtrar + Agregar (por periodo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar + Agregar (por periodo)": {
+      "main": [
+        [
+          {
+            "node": "Construir HTML (CSS inline)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir HTML (CSS inline)": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email (SMTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Email (SMTP)": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7dad71d1e7b0496e114431a893163742657da9e7cbcc5de1d542ea6248d85bb3"
+  }
+}

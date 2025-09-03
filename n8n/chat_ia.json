@@ -1,0 +1,730 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b46fe309-6f9f-4a4e-a0b7-2d4086e48bc3",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        368,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const ans = $json; const routed = $items(\"Enrutar contexto por intención\", 0, 0)?.[0]?.json || {}; return [{ json: { ok: ans.ok, answer: ans.answer, model: ans.model, usage: ans.usage, intent: routed.intent, period: routed.period, context: routed.context } }];"
+      },
+      "id": "82f54fb7-80c0-4b78-895f-bb5440c16edf",
+      "name": "Construir salida",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        160,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "try { const r = $json || {}; let answer = 'Sin respuesta'; if (Array.isArray(r.choices) && r.choices[0]?.message?.content) answer = r.choices[0].message.content; return [{ json: { ok: true, answer, model: r.model || null, usage: r.usage || null } }]; } catch (e) { return [{ json: { ok: false, answer: 'Error parseando respuesta IA', error: String(e) } }]; }"
+      },
+      "id": "4d56267d-ea2c-4803-aa1d-f007ca5d50c5",
+      "name": "Extraer respuesta LLM",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "jsonParameters": true,
+        "options": {
+          "ignoreResponseCode": true
+        },
+        "bodyParametersJson": "={{ { \"model\": $json.model, \"messages\": $json.messages, \"temperature\": 0.2, \"max_tokens\": 900 } }}",
+        "headerParametersJson": "{ \"Authorization\": \"Bearer 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\", \"Content-Type\": \"application/json\", \"Accept\": \"application/json\" }"
+      },
+      "id": "1ad05621-5ccb-4db4-8087-8c4118dc1c83",
+      "name": "Groq Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const ctx = $json;\nconst sistema = [\n  'Eres un asistente en ESPAÑOL. Te llamas Teodoro',\n  'Si la pregunta trata de VENTAS/PRODUCTOS/FINANZAS, responde EXCLUSIVAMENTE con el CONTEXTO proporcionado. No inventes cifras.',\n  'Tipos de contexto: ventas -> métricas de ingresos/unidades/cliente/producto; vapers -> inventario/stock/precios/marcas/sabores; finanzas -> ingresos/gastos/beneficio/margen/serie financiera.',\n  'Si falta contexto para el periodo solicitado, dilo y ofrece global, últimos 7/30/90 días (si aplica).',\n  'Responde claro, breve y accionable: bullets, cifras, tendencias y outliers.'\n].join('\\n');\n\nreturn [{ json: {\n  model: 'llama-3.3-70b-versatile',\n  messages: [\n    { role: 'system', content: sistema },\n    { role: 'user', content: `INTENCIÓN: ${ctx.intent}` },\n    { role: 'user', content: `USUARIO: ${ctx.prompt}` },\n    { role: 'user', content: `CONTEXTO(${ctx.intent.toUpperCase()}): ${JSON.stringify({ period: ctx.period, context: ctx.context, sample: ctx.sample })}` }\n  ]\n} }];"
+      },
+      "id": "a53b04e3-c7a5-4afb-a34d-3c6390a2f244",
+      "name": "Construir mensajes Chat",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const base = $items(\"Normalizar input (chat libre)\", 0, 0)[0]?.json || {};\nconst intent = $items(\"Detectar intención\", 0, 0)[0]?.json?.intent || 'ventas';\nconst ventasCtx = $items(\"Contexto ventas (agregados)\", 0, 0)[0]?.json || {};\nconst vapersCtx = $items(\"Contexto vapers (agregados)\", 0, 0)[0]?.json || {};\nconst finCtx = $items(\"Contexto finanzas (agregados)\", 0, 0)[0]?.json || {};\n\nlet ctxType = intent;\nlet context = null;\nlet sample = null;\n\nif (intent === 'vapers' && vapersCtx?.vapersContext) {\n  context = vapersCtx.vapersContext; sample = vapersCtx?.muestra ?? null;\n} else if (intent === 'finanzas' && finCtx?.finanzasContext) {\n  context = finCtx.finanzasContext; sample = finCtx?.serieDiaria ?? null;\n} else if (ventasCtx?.contextVentas) {\n  ctxType = 'ventas';\n  context = ventasCtx.contextVentas; sample = ventasCtx?.ventasSample ?? null;\n}\n\nreturn [{ json: { prompt: base.prompt, period: base.period || null, intent: ctxType, context, sample } }];"
+      },
+      "id": "77b44eee-3c26-4261-bfd8-4905c41b5b4c",
+      "name": "Enrutar contexto por intención",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "3aea2cf6-5e9d-4025-a32e-1ed007bf4daf",
+      "name": "Merge (Todo + Finanzas)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "fe064607-3dd6-421e-9606-3cb0b7029770",
+      "name": "Merge (Ventas/Vapers)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "d25b5d56-576c-48cf-b122-1ceb51b8515b",
+      "name": "Merge Ventas + Productos",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Agregados globales + ventanas + por periodo (sin $items; usa merge previo)\ntry {\n  // Tras el \"Merge ventas + productos (Combine)\", todo viene en $json\n  const ventas = Array.isArray($json.ventas) ? $json.ventas : [];\n  const prompt = $json.prompt || '';\n  const period = $json.period || null;\n\n  // Índice de productos ya embebido por el Merge\n  const productosIndex = ($json.productosIndex && typeof $json.productosIndex === 'object')\n    ? $json.productosIndex\n    : {};\n\n  const fechaKeys = ['fecha', 'createdAt', 'updatedAt', 'fechaVenta', 'date'];\n  const getFecha = (v) => {\n    for (const k of fechaKeys) {\n      if (v && v[k]) {\n        const d = new Date(v[k]);\n        if (!isNaN(d)) return d;\n      }\n    }\n    return null;\n  };\n\n  const clean = ventas.map(v => {\n    const fecha = getFecha(v);\n    const cantidad = Number(v?.cantidad ?? 1);\n    const pu = Number(v?.precio_unitario ?? v?.precio ?? 0);\n    const total = v?.total != null ? Number(v.total) : cantidad * pu;\n\n    // Resolver nombre: primero v.producto.nombre, luego índice, luego v.nombre, luego el id\n    const pid = v?.productId ?? v?.id_vaper ?? v?.idproducto ?? v?.producto_id ?? null;\n    const nombreResuelto =\n      (v?.producto?.nombre)\n      || (pid != null ? productosIndex[String(pid)] : null)\n      || v?.nombre\n      || (pid != null ? `Producto ${String(pid)}` : 'Desconocido');\n\n    const cliente = (v?.cliente ?? v?.usuario ?? 'Desconocido') + '';\n\n    return {\n      fecha,\n      cantidad,\n      precio_unitario: pu,\n      total,\n      cliente,\n      producto: String(nombreResuelto),\n      productId: pid\n    };\n  }).filter(x => x.fecha && !isNaN(x.fecha));\n\n  const now = new Date();\n  const dayMs = 24 * 60 * 60 * 1000;\n  const from7  = new Date(now.getTime() - 7  * dayMs);\n  const from30 = new Date(now.getTime() - 30 * dayMs);\n  const from90 = new Date(now.getTime() - 90 * dayMs);\n\n  const agg = (arr) => {\n    let ingresoTotal = 0, numVentas = arr.length, unidades = 0;\n    const cMap = new Map(), pMap = new Map(), byDay = new Map();\n\n    for (const x of arr) {\n      ingresoTotal += x.total; unidades += x.cantidad;\n\n      cMap.set(x.cliente, (cMap.get(x.cliente) || 0) + x.total);\n\n      const p = pMap.get(x.producto) || { unidades: 0, ingresos: 0 };\n      p.unidades += x.cantidad; p.ingresos += x.total;\n      pMap.set(x.producto, p);\n\n      const key = x.fecha.toISOString().slice(0,10);\n      const d = byDay.get(key) || { ingresos: 0, ventas: 0, unidades: 0 };\n      d.ingresos += x.total; d.ventas += 1; d.unidades += x.cantidad;\n      byDay.set(key, d);\n    }\n\n    const ticketMedio = numVentas > 0 ? ingresoTotal / numVentas : 0;\n    const topCliente = [...cMap.entries()].sort((a,b)=> b[1]-a[1])[0] || [null,0];\n    const topProductos = [...pMap.entries()]\n      .map(([producto, s]) => ({ producto, ...s }))\n      .sort((a,b)=> b.ingresos - a.ingresos)\n      .slice(0,5);\n    const serieDiaria = [...byDay.entries()]\n      .sort((a,b)=> (a[0] < b[0] ? -1 : 1))\n      .map(([fecha, val]) => ({ fecha, ...val }));\n\n    return {\n      metrics: { ingresoTotal, numVentas, unidades, ticketMedio },\n      resumen: { topCliente: { nombre: topCliente[0], gasto: topCliente[1] }, topProductos },\n      serieDiaria\n    };\n  };\n\n  const global = agg(clean);\n  const last7  = agg(clean.filter(x => x.fecha >= from7));\n  const last30 = agg(clean.filter(x => x.fecha >= from30));\n  const last90 = agg(clean.filter(x => x.fecha >= from90));\n\n  let byPeriod = null;\n  if (period?.from && period?.to) {\n    const f = new Date(period.from), t = new Date(period.to);\n    byPeriod = agg(clean.filter(x => x.fecha >= f && x.fecha <= t));\n  }\n\n  return [{\n    json: {\n      prompt,\n      period,\n      contextVentas: { global, last7, last30, last90, byPeriod },\n      ventasSample: clean.slice(0, 50)\n    }\n  }];\n} catch (e) {\n  return [{\n    json: {\n      prompt: $json.prompt || '',\n      period: $json.period || null,\n      contextVentas: null,\n      ventasSample: [],\n      _error: String(e)\n    }\n  }];\n}\n"
+      },
+      "id": "03ef67c4-406b-452c-ac4c-c5618936c589",
+      "name": "Contexto ventas (agregados)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "try {\n  // Parse respuesta de API de ventas\n  let raw = $json.data ?? $json.body ?? $json;\n  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = []; } }\n  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {\n    const arrKey = Object.keys(raw).find(k => Array.isArray(raw[k]));\n    raw = arrKey ? raw[arrKey] : [];\n  }\n  if (!Array.isArray(raw)) raw = [];\n\n  // Recupera SIEMPRE prompt/period del origen\n  const baseNode = $items(\"Normalizar input (chat libre)\", 0, 0)[0];\n  const base = (baseNode && baseNode.json) ? baseNode.json : {};\n\n  // Conserva productId desde varios posibles campos\n  const ventas = raw.map(v => {\n    const productId = v?.productId ?? v?.id_vaper ?? v?.idproducto ?? v?.producto_id ?? null;\n    return { ...v, productId };\n  });\n\n  return [{ json: { ventas, prompt: base.prompt || '', period: base.period || null } }];\n} catch (e) {\n  const baseNode = $items(\"Normalizar input (chat libre)\", 0, 0)[0];\n  const base = (baseNode && baseNode.json) ? baseNode.json : {};\n  return [{ json: { ventas: [], prompt: base.prompt || '', period: base.period || null, _error: String(e) } }];\n}"
+      },
+      "id": "276536e1-c15d-4720-8dac-a5ef86b22afb",
+      "name": "Parsear ventas",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "try {\n  const fin = Array.isArray($json.finanzas) ? $json.finanzas : [];\n  const byDay = new Map();\n  let ingresoTotal = 0, gastoTotal = 0, beneficioTotal = 0;\n  const byCategoria = new Map();\n  for (const x of fin) {\n    ingresoTotal += x.ingreso; gastoTotal += x.gasto; beneficioTotal += x.beneficio;\n    const day = x.fecha.toISOString().slice(0,10);\n    const d = byDay.get(day) || { ingreso:0, gasto:0, beneficio:0 };\n    d.ingreso += x.ingreso; d.gasto += x.gasto; d.beneficio += x.beneficio;\n    byDay.set(day, d);\n    if (x.categoria) byCategoria.set(x.categoria, (byCategoria.get(x.categoria)||0) + x.gasto);\n  }\n  const margen = ingresoTotal ? (beneficioTotal / ingresoTotal) : 0;\n  const serieDiaria = [...byDay.entries()].sort((a,b)=> a[0]<b[0]?-1:1).map(([fecha,val])=>({fecha, ...val}));\n  const gastosPorCategoria = [...byCategoria.entries()].sort((a,b)=> b[1]-a[1]).slice(0,8).map(([categoria, gasto])=>({categoria, gasto}));\n  return [{ json: { finanzasContext: {\n    metrics: { ingresoTotal, gastoTotal, beneficioTotal, margen },\n    resumen: { gastosPorCategoria },\n    serieDiaria\n  } } }];\n} catch (e) {\n  return [{ json: { finanzasContext: null, _error: String(e) } }];\n}"
+      },
+      "id": "1e345007-bfa1-453c-9d5c-939995adb472",
+      "name": "Contexto finanzas (agregados)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "try {\n  let raw = $json.data ?? $json.body ?? $json;\n  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = []; } }\n  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {\n    const arrKey = Object.keys(raw).find(k => Array.isArray(raw[k]));\n    raw = arrKey ? raw[arrKey] : [];\n  }\n  if (!Array.isArray(raw)) raw = [];\n  const items = raw.map(r => {\n    const fecha = new Date(r.fecha ?? r.date ?? r.createdAt ?? r.updatedAt ?? Date.now());\n    const ingreso = Number(r.ingreso ?? r.ingresos ?? r.venta ?? r.revenue ?? 0);\n    const gasto = Number(r.gasto ?? r.gastos ?? r.costes ?? r.costo ?? r.expense ?? 0);\n    const beneficio = (r.beneficio ?? r.profit) != null ? Number(r.beneficio ?? r.profit) : (ingreso - gasto);\n    const categoria = r.categoria ?? r.category ?? null;\n    return { fecha, ingreso, gasto, beneficio, categoria };\n  }).filter(x => x.fecha && !isNaN(x.fecha));\n  return [{ json: { finanzas: items } }];\n} catch (e) {\n  return [{ json: { finanzas: [], _error: String(e) } }];\n}"
+      },
+      "id": "1286f119-7c99-480c-9b05-85cb36fab9a4",
+      "name": "Parsear finanzas",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1568,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api-vapers.onrender.com/api/finanzas",
+        "responseFormat": "string",
+        "options": {
+          "fullResponse": true
+        }
+      },
+      "id": "8925ea80-0999-48d3-9248-e0c4d4d3949f",
+      "name": "Obtener finanzas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1888,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "try {\n  const vapers = Array.isArray($json.vapers) ? $json.vapers : [];\n  const totalSkus = vapers.length;\n  const stockTotal = vapers.reduce((a,b)=> a + (b.stock||0), 0);\n  const precioMedio = totalSkus ? vapers.reduce((a,b)=> a + (b.precio||0), 0)/totalSkus : 0;\n  const byMarca = new Map();\n  const bySabor = new Map();\n  for (const v of vapers) {\n    if (v.marca) byMarca.set(v.marca, (byMarca.get(v.marca)||0) + (v.stock||0));\n    if (v.sabor) bySabor.set(v.sabor, (bySabor.get(v.sabor)||0) + (v.stock||0));\n  }\n  const topStock = [...byMarca.entries()].sort((a,b)=> b[1]-a[1]).slice(0,5).map(([marca, stock])=>({marca, stock}));\n  const saboresTop = [...bySabor.entries()].sort((a,b)=> b[1]-a[1]).slice(0,5).map(([sabor, stock])=>({sabor, stock}));\n  return [{ json: { vapersContext: {\n    metrics: { totalSkus, stockTotal, precioMedio },\n    resumen: { topMarcasPorStock: topStock, topSaboresPorStock: saboresTop },\n    muestra: vapers.slice(0,50)\n  } } }];\n} catch (e) {\n  return [{ json: { vapersContext: null, _error: String(e) } }];\n}"
+      },
+      "id": "04554bf0-a859-4da0-ba8c-84f6dd48de29",
+      "name": "Contexto vapers (agregados)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "try {\n  let raw = $json.data ?? $json.body ?? $json;\n  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = []; } }\n  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {\n    const arrKey = Object.keys(raw).find(k => Array.isArray(raw[k]));\n    raw = arrKey ? raw[arrKey] : [];\n  }\n  if (!Array.isArray(raw)) raw = [];\n  // Normaliza campos habituales\n  const items = raw.map(v => {\n    const id = v.id_vaper ?? v.id ?? v.producto_id ?? v.idproducto ?? null;\n    const nombre = v.nombre ?? v.name ?? v.title ?? `Vaper ${id ?? ''}`;\n    const marca = v.marca ?? v.brand ?? null;\n    const sabor = v.sabor ?? v.flavor ?? null;\n    const stock = Number(v.stock ?? v.cantidad ?? v.unidades_disponibles ?? 0);\n    const precio = Number(v.precio ?? v.precio_unitario ?? v.pvp ?? 0);\n    const creado = v.createdAt ?? v.fecha_alta ?? v.fecha ?? v.date ?? null;\n    const actualizado = v.updatedAt ?? v.fecha_actualizacion ?? null;\n    const d = actualizado || creado || null;\n    const fecha = d ? new Date(d) : null;\n    return { id, nombre: String(nombre), marca, sabor, stock, precio, fecha };\n  }).filter(x => !x.fecha || !isNaN(x.fecha));\n  return [{ json: { vapers: items } }];\n} catch (e) {\n  return [{ json: { vapers: [], _error: String(e) } }];\n}"
+      },
+      "id": "3efcbb1a-6ef1-4236-b190-c43565028899",
+      "name": "Parsear vapers",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1568,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api-vapers.onrender.com/api/vapers",
+        "responseFormat": "string",
+        "options": {
+          "fullResponse": true
+        }
+      },
+      "id": "35307332-4f86-4053-be84-5a9dd278bf6d",
+      "name": "Obtener vapers (dataset)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1888,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Índice de productos {id -> nombre}\ntry {\n  let raw = $json.data ?? $json.body ?? $json;\n  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch { raw = []; } }\n  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {\n    const k = Object.keys(raw).find(x => Array.isArray(raw[x]));\n    raw = k ? raw[k] : [];\n  }\n  const arr = Array.isArray(raw) ? raw : [];\n  const idx = {};\n  for (const p of arr) {\n    const id = p.id_vaper ?? p.idproducto ?? p.producto_id ?? p.id ?? p.sku ?? p.codigo ?? null;\n    const nombre = p.nombre ?? p.name ?? p.titulo ?? p.title ?? p.descripcion ?? p.descripcion_corta ?? null;\n    if (id != null) idx[String(id)] = (nombre && String(nombre).trim()) || String(id);\n  }\n  return [{ json: { productosIndex: idx } }];\n} catch (e) {\n  return [{ json: { productosIndex: {}, _errorProductos: String(e) } }];\n}"
+      },
+      "id": "199beb4a-d34a-43c2-929a-e49bd9e3132b",
+      "name": "Indexar productos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api-vapers.onrender.com/api/vapers",
+        "responseFormat": "string",
+        "options": {
+          "fullResponse": true
+        }
+      },
+      "id": "5b9f3210-caff-4087-a252-7fbe2ca8b09c",
+      "name": "Obtener productos (índice nombres)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1536,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "3ded6905-19a3-4f96-bdca-8f759eee3d43",
+      "name": "Merge Prompt Ventas2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api-vapers.onrender.com/api/ventas",
+        "responseFormat": "string",
+        "options": {
+          "fullResponse": true
+        }
+      },
+      "id": "78eef6a1-4512-4350-a9cd-273f04e25223",
+      "name": "Obtener ventas #2 (retry)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        320
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1b7ceb51-8669-403e-88e1-d9fa1b8085f6",
+      "name": "Wait 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        320
+      ],
+      "webhookId": "734b4717-f8d7-4f6e-8122-f6a97303aacf"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.statusCode || $json.status || ($json.body?.statusCode ?? 0) }}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "id": "9acd12dd-7503-4255-8c57-6628c3fc04f2",
+      "name": "¿200 OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "passThrough"
+      },
+      "id": "665eafce-133e-40b8-91f4-5c86678b5335",
+      "name": "Merge Prompt Ventas1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api-vapers.onrender.com/api/ventas",
+        "responseFormat": "string",
+        "options": {
+          "fullResponse": true
+        }
+      },
+      "id": "70aa2437-86ec-4578-808d-48e6d12411d7",
+      "name": "Obtener ventas #1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const { prompt } = $json;\nconst t = (prompt || '').toLowerCase();\n// Palabras clave para intención\nconst isVentas = /(venta|ingreso|factur|ticket|cliente|unidades|top|tendenc|compar|hoy|ayer|semana|mes|año|periodo)/.test(t);\nconst isFinanzas = /(finanza|gasto|beneficio|margen|cash ?flow|tesor|balance|caja|coste|costos|costo)/.test(t);\nconst isVapers = /(stock|inventario|vaper|producto|sabor|marca|disponible|agotado|sku|precio)/.test(t);\nlet intent = 'ventas';\nif (isFinanzas && !isVentas && !isVapers) intent = 'finanzas';\nif (isVapers && !isFinanzas && !isVentas) intent = 'vapers';\n// Si menciona explícitamente vapers/finanzas, prima sobre ventas por defecto\nif (/(^|\\b)(vapers?|productos?)\\b/.test(t)) intent = 'vapers';\nif (/(^|\\b)(finanzas?|gastos?|beneficio)\\b/.test(t)) intent = 'finanzas';\nreturn [{ json: { ...$json, intent } }];"
+      },
+      "id": "f13b5bec-ea69-4263-9fea-faf4dc7ca786",
+      "name": "Detectar intención",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1872,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const b = $json.body || $json || {};\n// Acepta prompt o message\nconst prompt = ((b.prompt ?? b.message ?? '') + '').trim();\nif (!prompt) {\n  return [{ json: { ok: false, error: 'Falta prompt/message' } }];\n}\n\n// Detección opcional de periodo desde texto (no obligatorio)\nfunction iso(d){ return new Date(d).toISOString(); }\nconst now = new Date();\nconst today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());\nconst yday0 = new Date(today0.getTime() - 24*60*60*1000);\nlet period = null;\nconst txt = prompt.toLowerCase();\n\n// Rangos explícitos: \"desde X hasta Y\"\nconst reRango = /(?:desde|de)\\s+(\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4})\\s+(?:hasta|a)\\s+(\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4})/;\nconst mR = txt.match(reRango);\nif (mR) {\n  const f = new Date(mR[1]);\n  const t = new Date(mR[2]);\n  if (!isNaN(f) && !isNaN(t)) period = { from: iso(f), to: iso(t) };\n}\n\nif (!period) {\n  if (/(hoy|today)/.test(txt)) period = { from: iso(today0), to: iso(now) };\n  else if (/(ayer|yesterday)/.test(txt)) period = { from: iso(yday0), to: iso(today0) };\n  else if (/(esta semana|última semana|last week)/.test(txt)) { const f = new Date(now.getTime() - 7*24*60*60*1000); period = { from: iso(f), to: iso(now) }; }\n  else if (/(este mes|último mes|this month|last month)/.test(txt)) { const first = new Date(now.getFullYear(), now.getMonth(), 1); period = { from: iso(first), to: iso(now) }; }\n  else if (/(este trimestre|q\\d|quarter)/.test(txt)) { const q = Math.floor(now.getMonth()/3); const first = new Date(now.getFullYear(), q*3, 1); period = { from: iso(first), to: iso(now) }; }\n  else if (/(este año|this year|ytd)/.test(txt)) { const first = new Date(now.getFullYear(), 0, 1); period = { from: iso(first), to: iso(now) }; }\n}\n\nreturn [{ json: { prompt, period } }];"
+      },
+      "id": "95e3506d-a017-4a8e-b0ce-7d2fd90cb5dd",
+      "name": "Normalizar input (chat libre)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -2064,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ventas-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a65b6751-27e3-46d3-9754-a25b4e3104a9",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2272,
+        224
+      ],
+      "webhookId": "ventas-chat"
+    }
+  ],
+  "connections": {
+    "Construir salida": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer respuesta LLM": {
+      "main": [
+        [
+          {
+            "node": "Construir salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat": {
+      "main": [
+        [
+          {
+            "node": "Extraer respuesta LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir mensajes Chat": {
+      "main": [
+        [
+          {
+            "node": "Groq Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrutar contexto por intención": {
+      "main": [
+        [
+          {
+            "node": "Construir mensajes Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge (Todo + Finanzas)": {
+      "main": [
+        [
+          {
+            "node": "Enrutar contexto por intención",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge (Ventas/Vapers)": {
+      "main": [
+        [
+          {
+            "node": "Merge (Todo + Finanzas)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Ventas + Productos": {
+      "main": [
+        [
+          {
+            "node": "Contexto ventas (agregados)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto ventas (agregados)": {
+      "main": [
+        [
+          {
+            "node": "Merge (Ventas/Vapers)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear ventas": {
+      "main": [
+        [
+          {
+            "node": "Merge Ventas + Productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto finanzas (agregados)": {
+      "main": [
+        [
+          {
+            "node": "Merge (Todo + Finanzas)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parsear finanzas": {
+      "main": [
+        [
+          {
+            "node": "Contexto finanzas (agregados)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener finanzas": {
+      "main": [
+        [
+          {
+            "node": "Parsear finanzas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto vapers (agregados)": {
+      "main": [
+        [
+          {
+            "node": "Merge (Ventas/Vapers)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parsear vapers": {
+      "main": [
+        [
+          {
+            "node": "Contexto vapers (agregados)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener vapers (dataset)": {
+      "main": [
+        [
+          {
+            "node": "Parsear vapers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Indexar productos": {
+      "main": [
+        [
+          {
+            "node": "Merge Ventas + Productos",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Obtener productos (índice nombres)": {
+      "main": [
+        [
+          {
+            "node": "Indexar productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Prompt Ventas2": {
+      "main": [
+        [
+          {
+            "node": "Parsear ventas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener ventas #2 (retry)": {
+      "main": [
+        [
+          {
+            "node": "Merge Prompt Ventas2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 5s": {
+      "main": [
+        [
+          {
+            "node": "Obtener ventas #2 (retry)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿200 OK?": {
+      "main": [
+        [
+          {
+            "node": "Parsear ventas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Prompt Ventas1": {
+      "main": [
+        [
+          {
+            "node": "¿200 OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener ventas #1": {
+      "main": [
+        [
+          {
+            "node": "Merge Prompt Ventas1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar input (chat libre)": {
+      "main": [
+        [
+          {
+            "node": "Obtener finanzas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Obtener vapers (dataset)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Obtener productos (índice nombres)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Prompt Ventas1",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Obtener ventas #1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Detectar intención",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalizar input (chat libre)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "7dad71d1e7b0496e114431a893163742657da9e7cbcc5de1d542ea6248d85bb3"
+  }
+}
