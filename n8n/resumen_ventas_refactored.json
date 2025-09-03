@@ -1,0 +1,111 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resumen-7dias-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-resumen",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-720, 0],
+      "webhookId": "resumen-7dias-email"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {"name": "toEmail", "value": "={{ $json.body.toEmail || $env.DEFAULT_REPORT_EMAIL }}"},
+            {"name": "subject", "value": "={{ $json.body.subject || 'Resumen ventas últimos 7 días' }}"}
+          ],
+          "dateTime": [
+            {"name": "from", "value": "={{ new Date(Date.now()-7*24*60*60*1000).toISOString() }}"},
+            {"name": "to", "value": "={{ new Date().toISOString() }}"}
+          ]
+        }
+      },
+      "id": "set-params",
+      "name": "Set Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [-480, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.VAPERS_API_BASE + '/ventas' }}",
+        "responseFormat": "json",
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 3
+        }
+      },
+      "id": "fetch-ventas",
+      "name": "Fetch Sales",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const {from,to,toEmail,subject} = $json;\nconst ventas = $items('Fetch Sales')[0].json || [];\nconst desde = new Date(from);\nconst hasta = new Date(to);\nconst filtradas = ventas.filter(v => {const d=new Date(v.fecha);return d>=desde && d<=hasta;});\nconst ingresoTotal = filtradas.reduce((a,v)=> a + Number(v.total||0),0);\nconst unidades = filtradas.reduce((a,v)=> a + Number(v.cantidad||1),0);\nreturn [{ json: {toEmail,subject,periodo:{from, to}, resumen:{ingresoTotal, unidades, numVentas: filtradas.length} } }];"
+      },
+      "id": "calcular-resumen",
+      "name": "Calculate Summary",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const r = $json;\nconst body = `<h1>Resumen de ventas</h1><p>Periodo: ${r.periodo.from} - ${r.periodo.to}</p><ul><li>Ingresos: ${r.resumen.ingresoTotal}</li><li>Unidades: ${r.resumen.unidades}</li><li>Nº Ventas: ${r.resumen.numVentas}</li></ul>`;\nreturn [{ json: { toEmail: r.toEmail, subject: r.subject, html: body } }];"
+      },
+      "id": "construir-html",
+      "name": "Build HTML",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "reports@example.com",
+        "toEmail": "={{ $json.toEmail }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "credentials": {
+        "smtp": {"id": "={{ $env.SMTP_CRED_ID }}", "name": "SMTP"}
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "responder",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [720, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Set Params", "type": "main", "index": 0}]]},
+    "Set Params": {"main": [[{"node": "Fetch Sales", "type": "main", "index": 0}]]},
+    "Fetch Sales": {"main": [[{"node": "Calculate Summary", "type": "main", "index": 0}]]},
+    "Calculate Summary": {"main": [[{"node": "Build HTML", "type": "main", "index": 0}]]},
+    "Build HTML": {"main": [[{"node": "Send Email", "type": "main", "index": 0}]]},
+    "Send Email": {"main": [[{"node": "Responder", "type": "main", "index": 0}]]}
+  },
+  "meta": {
+    "instanceId": "workflow-refactor"
+  }
+}

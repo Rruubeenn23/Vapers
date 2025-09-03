@@ -1,0 +1,161 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ventas-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ventas-chat",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-1020, 0],
+      "webhookId": "ventas-chat"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {"name": "prompt", "value": "={{ $json.body.prompt || $json.body.message }}"}
+          ]
+        }
+      },
+      "id": "normalize-input",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.VAPERS_API_BASE + '/ventas' }}",
+        "responseFormat": "json",
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 3
+        }
+      },
+      "id": "fetch-sales",
+      "name": "Fetch Sales",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-600, 120]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.VAPERS_API_BASE + '/vapers' }}",
+        "responseFormat": "json",
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 3
+        }
+      },
+      "id": "fetch-vapers",
+      "name": "Fetch Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-600, -120]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.VAPERS_API_BASE + '/finanzas' }}",
+        "responseFormat": "json",
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 3
+        }
+      },
+      "id": "fetch-finanzas",
+      "name": "Fetch Finance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-600, -240]
+    },
+    {
+      "parameters": {
+        "functionCode": "const prompt = $json.prompt;\nconst ventas = $items('Fetch Sales')[0].json || [];\nconst vapers = $items('Fetch Inventory')[0].json || [];\nconst finanzas = $items('Fetch Finance')[0].json || [];\n\nreturn [{ json: { prompt, ventas, vapers, finanzas } }];"
+      },
+      "id": "aggregate-context",
+      "name": "Aggregate Context",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-360, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const text = ($json.prompt || '').toLowerCase();\nlet intent = 'ventas';\nif (/(inventario|stock|producto|vaper)/.test(text)) intent = 'vapers';\nif (/(finanza|gasto|beneficio)/.test(text)) intent = 'finanzas';\nreturn [{ json: { ...$json, intent } }];"
+      },
+      "id": "detect-intent",
+      "name": "Detect Intent",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const {prompt, intent, ventas, vapers, finanzas} = $json;\nconst ctx = { ventas, vapers, finanzas };\nconst sistema = 'Eres un asistente que responde en español usando solo el contexto proporcionado';\nreturn [{ json: { model: 'llama-3.3-70b-versatile', messages: [ {role: 'system', content: sistema}, {role: 'user', content: prompt}, {role: 'user', content: `CONTEXTO ${intent.toUpperCase()}: ${JSON.stringify(ctx[intent]||{})}`} ] } }];"
+      },
+      "id": "build-messages",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "jsonParameters": true,
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 2
+        },
+        "bodyParametersJson": "={{ { model: $json.model, messages: $json.messages, temperature: 0.2, max_tokens: 900 } }}",
+        "headerParametersJson": "={{ { 'Authorization': 'Bearer ' + $env.GROQ_API_KEY, 'Content-Type': 'application/json' } }}"
+      },
+      "id": "groq-chat",
+      "name": "Groq Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [360, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const r = $json; const content = r.choices?.[0]?.message?.content || 'Sin respuesta'; return [{ json: { answer: content } }];"
+      },
+      "id": "extract-answer",
+      "name": "Extract Answer",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [840, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[ { "node": "Normalize Input", "type": "main", "index": 0 } ]] },
+    "Normalize Input": { "main": [[ { "node": "Fetch Sales", "type": "main", "index": 0 }, { "node": "Fetch Inventory", "type": "main", "index": 0 }, { "node": "Fetch Finance", "type": "main", "index": 0 } ]] },
+    "Fetch Sales": { "main": [[ { "node": "Aggregate Context", "type": "main", "index": 0 } ]] },
+    "Fetch Inventory": { "main": [[ { "node": "Aggregate Context", "type": "main", "index": 0 } ]] },
+    "Fetch Finance": { "main": [[ { "node": "Aggregate Context", "type": "main", "index": 0 } ]] },
+    "Aggregate Context": { "main": [[ { "node": "Detect Intent", "type": "main", "index": 0 } ]] },
+    "Detect Intent": { "main": [[ { "node": "Build Messages", "type": "main", "index": 0 } ]] },
+    "Build Messages": { "main": [[ { "node": "Groq Chat", "type": "main", "index": 0 } ]] },
+    "Groq Chat": { "main": [[ { "node": "Extract Answer", "type": "main", "index": 0 } ]] },
+    "Extract Answer": { "main": [[ { "node": "Respond", "type": "main", "index": 0 } ]] }
+  },
+  "meta": {
+    "instanceId": "workflow-refactor"
+  }
+}
