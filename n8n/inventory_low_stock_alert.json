@@ -1,0 +1,108 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": [{
+          "item": {
+            "mode": "everyDay",
+            "hour": 8
+          }
+        }]
+      },
+      "id": "cron",
+      "name": "Daily 8AM",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [-960, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.VAPERS_API_BASE + '/vapers' }}",
+        "responseFormat": "json",
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 3
+        }
+      },
+      "id": "fetch-inventory",
+      "name": "Fetch Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-720, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const threshold = Number($env.LOW_STOCK_THRESHOLD || 5);\nconst low = ($json || []).filter(i => Number(i.stock) <= threshold);\nreturn [{ json: { lowStock: low, threshold } }];"
+      },
+      "id": "filter-low-stock",
+      "name": "Filter Low Stock",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-480, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {"value1": "={{ $json.lowStock.length }}", "operation": "greater", "value2": 0}
+          ]
+        }
+      },
+      "id": "has-low-stock",
+      "name": "Has Low Stock?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const items = $json.lowStock;\nconst lines = items.map(i => `• ${i.nombre} (stock: ${i.stock})`);\nconst text = `Productos con stock bajo (≤ ${$json.threshold}):\n` + lines.join('\n');\nreturn [{ json: { text } }];"
+      },
+      "id": "build-message",
+      "name": "Build Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $env.SLACK_CHANNEL_STOCK }}",
+        "text": "={{ $json.text }}"
+      },
+      "id": "send-slack",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [240, 0],
+      "credentials": {
+        "slackApi": {
+          "id": "={{ $env.SLACK_CRED_ID }}",
+          "name": "Slack Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 8AM": {
+      "main": [[{"node": "Fetch Inventory", "type": "main", "index": 0}]]
+    },
+    "Fetch Inventory": {
+      "main": [[{"node": "Filter Low Stock", "type": "main", "index": 0}]]
+    },
+    "Filter Low Stock": {
+      "main": [[{"node": "Has Low Stock?", "type": "main", "index": 0}]]
+    },
+    "Has Low Stock?": {
+      "main": [
+        [{"node": "Build Message", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Build Message": {
+      "main": [[{"node": "Send Slack", "type": "main", "index": 0}]]
+    }
+  },
+  "meta": {"instanceId": "workflow-inventory-alert"}
+}

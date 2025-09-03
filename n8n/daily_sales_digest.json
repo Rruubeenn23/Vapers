@@ -1,0 +1,91 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": [{
+          "item": {
+            "mode": "everyDay",
+            "hour": 7
+          }
+        }]
+      },
+      "id": "cron",
+      "name": "Daily 7AM",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [-960, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const now = new Date();\nconst end = new Date(now.getFullYear(), now.getMonth(), now.getDate());\nconst start = new Date(end.getTime() - 24*60*60*1000);\nreturn [{ json: { from: start.toISOString(), to: end.toISOString() } }];"
+      },
+      "id": "set-period",
+      "name": "Set Period",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-720, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.VAPERS_API_BASE + '/ventas' }}",
+        "responseFormat": "json",
+        "options": {
+          "retryOnFail": true,
+          "maxRetries": 3
+        }
+      },
+      "id": "fetch-sales",
+      "name": "Fetch Sales",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [-480, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const period = $items('Set Period')[0].json;\nconst ventas = $json || [];\nconst desde = new Date(period.from);\nconst hasta = new Date(period.to);\nconst filtradas = ventas.filter(v => { const d = new Date(v.fecha); return d >= desde && d < hasta; });\nconst total = filtradas.reduce((a,v) => a + Number(v.total || 0), 0);\nreturn [{ json: { from: period.from, to: period.to, total, count: filtradas.length } }];"
+      },
+      "id": "compute-digest",
+      "name": "Compute Digest",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "functionCode": "const {from,to,total,count} = $json;\nconst text = `Ventas del ${from} al ${to}:\\nIngresos: $${total}\\nNúmero de ventas: ${count}`;\nreturn [{ json: { text } }];"
+      },
+      "id": "build-message",
+      "name": "Build Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "={{ $env.SLACK_CHANNEL_SALES }}",
+        "text": "={{ $json.text }}"
+      },
+      "id": "send-slack",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [240, 0],
+      "credentials": {
+        "slackApi": {
+          "id": "={{ $env.SLACK_CRED_ID }}",
+          "name": "Slack Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 7AM": {"main": [[{"node": "Set Period", "type": "main", "index": 0}]]},
+    "Set Period": {"main": [[{"node": "Fetch Sales", "type": "main", "index": 0}, {"node": "Compute Digest", "type": "main", "index": 0}]]},
+    "Fetch Sales": {"main": [[{"node": "Compute Digest", "type": "main", "index": 0}]]},
+    "Compute Digest": {"main": [[{"node": "Build Message", "type": "main", "index": 0}]]},
+    "Build Message": {"main": [[{"node": "Send Slack", "type": "main", "index": 0}]]}
+  },
+  "meta": {"instanceId": "workflow-daily-sales"}
+}
