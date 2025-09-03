@@ -19,7 +19,7 @@
         "keepOnlySet": true,
         "values": {
           "string": [
-            {"name": "prompt", "value": "={{ $json.body.prompt || $json.body.message }}"}
+            { "name": "prompt", "value": "={{ $json.body.prompt || $json.body.message }}" }
           ]
         }
       },
@@ -31,7 +31,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.VAPERS_API_BASE + '/ventas' }}",
+        "url": "https://api-vapers.onrender.com/api/ventas",
         "responseFormat": "json",
         "options": {
           "retryOnFail": true,
@@ -46,7 +46,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.VAPERS_API_BASE + '/vapers' }}",
+        "url": "https://api-vapers.onrender.com/api/vapers",
         "responseFormat": "json",
         "options": {
           "retryOnFail": true,
@@ -61,7 +61,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.VAPERS_API_BASE + '/finanzas' }}",
+        "url": "https://api-vapers.onrender.com/api/finanzas",
         "responseFormat": "json",
         "options": {
           "retryOnFail": true,
@@ -114,7 +114,7 @@
           "maxRetries": 2
         },
         "bodyParametersJson": "={{ { model: $json.model, messages: $json.messages, temperature: 0.2, max_tokens: 900 } }}",
-        "headerParametersJson": "={{ { 'Authorization': 'Bearer ' + $env.GROQ_API_KEY, 'Content-Type': 'application/json' } }}"
+        "headerParametersJson": "={{ { 'Authorization': 'Bearer env.GROQ_API_KEY', 'Content-Type': 'application/json' } }}"
       },
       "id": "groq-chat",
       "name": "Groq Chat",
@@ -144,16 +144,16 @@
     }
   ],
   "connections": {
-    "Webhook": { "main": [[ { "node": "Normalize Input", "type": "main", "index": 0 } ]] },
-    "Normalize Input": { "main": [[ { "node": "Fetch Sales", "type": "main", "index": 0 }, { "node": "Fetch Inventory", "type": "main", "index": 0 }, { "node": "Fetch Finance", "type": "main", "index": 0 } ]] },
-    "Fetch Sales": { "main": [[ { "node": "Aggregate Context", "type": "main", "index": 0 } ]] },
-    "Fetch Inventory": { "main": [[ { "node": "Aggregate Context", "type": "main", "index": 0 } ]] },
-    "Fetch Finance": { "main": [[ { "node": "Aggregate Context", "type": "main", "index": 0 } ]] },
-    "Aggregate Context": { "main": [[ { "node": "Detect Intent", "type": "main", "index": 0 } ]] },
-    "Detect Intent": { "main": [[ { "node": "Build Messages", "type": "main", "index": 0 } ]] },
-    "Build Messages": { "main": [[ { "node": "Groq Chat", "type": "main", "index": 0 } ]] },
-    "Groq Chat": { "main": [[ { "node": "Extract Answer", "type": "main", "index": 0 } ]] },
-    "Extract Answer": { "main": [[ { "node": "Respond", "type": "main", "index": 0 } ]] }
+    "Webhook": { "main": [[{ "node": "Normalize Input", "type": "main", "index": 0 }]] },
+    "Normalize Input": { "main": [[{ "node": "Fetch Sales", "type": "main", "index": 0 }, { "node": "Fetch Inventory", "type": "main", "index": 0 }, { "node": "Fetch Finance", "type": "main", "index": 0 }]] },
+    "Fetch Sales": { "main": [[{ "node": "Aggregate Context", "type": "main", "index": 0 }]] },
+    "Fetch Inventory": { "main": [[{ "node": "Aggregate Context", "type": "main", "index": 0 }]] },
+    "Fetch Finance": { "main": [[{ "node": "Aggregate Context", "type": "main", "index": 0 }]] },
+    "Aggregate Context": { "main": [[{ "node": "Detect Intent", "type": "main", "index": 0 }]] },
+    "Detect Intent": { "main": [[{ "node": "Build Messages", "type": "main", "index": 0 }]] },
+    "Build Messages": { "main": [[{ "node": "Groq Chat", "type": "main", "index": 0 }]] },
+    "Groq Chat": { "main": [[{ "node": "Extract Answer", "type": "main", "index": 0 }]] },
+    "Extract Answer": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
   "meta": {
     "instanceId": "workflow-refactor"

@@ -16,27 +16,17 @@
     },
     {
       "parameters": {
-        "keepOnlySet": true,
-        "values": {
-          "string": [
-            {"name": "toEmail", "value": "={{ $json.body.toEmail || $env.DEFAULT_REPORT_EMAIL }}"},
-            {"name": "subject", "value": "={{ $json.body.subject || 'Resumen ventas últimos 7 días' }}"}
-          ],
-          "dateTime": [
-            {"name": "from", "value": "={{ new Date(Date.now()-7*24*60*60*1000).toISOString() }}"},
-            {"name": "to", "value": "={{ new Date().toISOString() }}"}
-          ]
-        }
+        "functionCode": "// Normaliza entrada y periodo\nconst b = $json.body || $json || {};\nconst toEmail = (b.toEmail || 'rubencereceda23@gmail.com') + '';\nconst subject = (b.subject || 'Resumen ventas últimos 7 días') + '';\n\nfunction iso(d){ return new Date(d).toISOString(); }\nconst now = new Date();\nconst defaultFrom = new Date(Date.now() - 7*24*60*60*1000);\nlet from = b.from ? new Date(b.from) : defaultFrom;\nlet to = b.to ? new Date(b.to) : now;\nif (isNaN(from)) from = defaultFrom;\nif (isNaN(to)) to = now;\n\nreturn [{ json: { toEmail, subject, periodo: { from: iso(from), to: iso(to) } } }];"
       },
       "id": "set-params",
-      "name": "Set Params",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
+      "name": "Preparar parámetros",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
       "position": [-480, 0]
     },
     {
       "parameters": {
-        "url": "={{ $env.VAPERS_API_BASE + '/ventas' }}",
+        "url": "https://api-vapers.onrender.com/api/ventas",
         "responseFormat": "json",
         "options": {
           "retryOnFail": true,
@@ -44,52 +34,53 @@
         }
       },
       "id": "fetch-ventas",
-      "name": "Fetch Sales",
+      "name": "Obtener ventas (todas)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
       "position": [-240, 0]
     },
     {
       "parameters": {
-        "functionCode": "const {from,to,toEmail,subject} = $json;\nconst ventas = $items('Fetch Sales')[0].json || [];\nconst desde = new Date(from);\nconst hasta = new Date(to);\nconst filtradas = ventas.filter(v => {const d=new Date(v.fecha);return d>=desde && d<=hasta;});\nconst ingresoTotal = filtradas.reduce((a,v)=> a + Number(v.total||0),0);\nconst unidades = filtradas.reduce((a,v)=> a + Number(v.cantidad||1),0);\nreturn [{ json: {toEmail,subject,periodo:{from, to}, resumen:{ingresoTotal, unidades, numVentas: filtradas.length} } }];"
+        "functionCode": "// Lee params de 'Preparar parámetros' y ventas de 'Obtener ventas (todas)'\nconst params = ($items('Preparar parámetros')[0] || {}).json || {};\nconst ventasAll = ($items('Obtener ventas (todas)')[0] || {}).json;\nconst ventasArray = Array.isArray(ventasAll) ? ventasAll : (ventasAll?.data ?? []);\n\nconst desde = new Date(params.periodo?.from || new Date(Date.now() - 7*24*60*60*1000));\nconst hasta = new Date(params.periodo?.to || new Date());\n\nconst ventas = ventasArray.filter(v => {\n  if (!v.fecha) return false;\n  const d = new Date(v.fecha);\n  return d && !isNaN(d) && d >= desde && d <= hasta;\n});\n\nlet ingresoTotal = 0; let numVentas = ventas.length; let unidades = 0;\nconst porProducto = new Map();\nconst porCliente = new Map();\n\nfor (const v of ventas) {\n  const cantidad = Number(v.cantidad ?? 1);\n  const total = v.total != null ? Number(v.total) : Number(cantidad * Number(v.precio_unitario ?? 0));\n  ingresoTotal += isNaN(total) ? 0 : total;\n  unidades += isNaN(cantidad) ? 0 : cantidad;\n\n  const nombreProducto = v.producto?.nombre || v.producto_nombre || v.nombre || v.sku || (v.id_vaper ? `Producto ${v.id_vaper}` : 'Desconocido');\n  const p = porProducto.get(nombreProducto) || { unidades: 0, ingresos: 0 };\n  p.unidades += isNaN(cantidad) ? 0 : cantidad;\n  p.ingresos += isNaN(total) ? 0 : total;\n  porProducto.set(nombreProducto, p);\n\n  const cKey = (v.cliente ?? v.usuario ?? 'Desconocido') + '';\n  porCliente.set(cKey, (porCliente.get(cKey) || 0) + (isNaN(total) ? 0 : total));\n}\n\nconst ticketMedio = numVentas > 0 ? ingresoTotal / numVentas : 0;\nconst topProductos = [...porProducto.entries()].map(([producto, s]) => ({ producto, ...s })).sort((a,b)=> b.ingresos - a.ingresos).slice(0,5);\nconst topClientePair = [...porCliente.entries()].sort((a,b)=> b[1] - a[1])[0] || [null, 0];\n\nreturn [{ json: {\n  toEmail: params.toEmail,\n  subject: params.subject,\n  periodo: { from: desde.toISOString(), to: hasta.toISOString() },\n  resumen: { ingresoTotal, numVentas, unidades, ticketMedio },\n  topProductos,\n  topCliente: { nombre: topClientePair[0], gasto: topClientePair[1] },\n  ventas\n} }];"
       },
       "id": "calcular-resumen",
-      "name": "Calculate Summary",
+      "name": "Filtrar + Agregar (por periodo)",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [0, 0]
     },
     {
       "parameters": {
-        "functionCode": "const r = $json;\nconst body = `<h1>Resumen de ventas</h1><p>Periodo: ${r.periodo.from} - ${r.periodo.to}</p><ul><li>Ingresos: ${r.resumen.ingresoTotal}</li><li>Unidades: ${r.resumen.unidades}</li><li>Nº Ventas: ${r.resumen.numVentas}</li></ul>`;\nreturn [{ json: { toEmail: r.toEmail, subject: r.subject, html: body } }];"
+        "functionCode": "// HTML con CSS inline\nconst d = $json;\nconst r = d.resumen || {};\nconst tp = d.topProductos || [];\nconst tc = d.topCliente || {};\n\nconst nf = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst money = (n)=> nf.format(Number(n||0));\nconst esc = (s)=> String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n\nconst periodoDesde = new Date(d.periodo?.from || '').toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });\nconst periodoHasta = new Date(d.periodo?.to || '').toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });\n\nconst rows = tp.length ? tp.map((p,i)=> `\n  <tr>\n    <td style=\"border:1px solid #e5e7eb; padding:10px; text-align:center;\">${i+1}</td>\n    <td style=\"border:1px solid #e5e7eb; padding:10px;\">${esc(p.producto)}</td>\n    <td style=\"border:1px solid #e5e7eb; padding:10px; text-align:right;\">${p.unidades ?? 0}</td>\n    <td style=\"border:1px solid #e5e7eb; padding:10px; text-align:right;\">${money(p.ingresos)}</td>\n  </tr>`).join('\\n') : `\n  <tr>\n    <td colspan=\"4\" style=\"border:1px solid #e5e7eb; padding:10px; text-align:center; color:#6b7280;\">Sin datos en el periodo</td>\n  </tr>`;\n\nconst html = `\n<div style=\"font-family: Arial, sans-serif; color: #111827; padding: 24px; background:#f9fafb;\">\n  <div style=\"max-width:680px; margin:0 auto; background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;\">\n    <div style=\"background:#111827; color:#ffffff; padding:18px 24px;\">\n      <h2 style=\"margin:0; font-size:20px;\">Resumen de ventas</h2>\n      <div style=\"font-size:13px; opacity:.85; margin-top:4px;\">Desde ${esc(periodoDesde)} hasta ${esc(periodoHasta)}</div>\n    </div>\n\n    <div style=\"padding:24px;\">\n      <div style=\"display:flex; gap:16px; flex-wrap:wrap;\">\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Ingresos totales</div>\n          <div style=\"font-size:20px; font-weight:700;\">${money(r.ingresoTotal)}</div>\n        </div>\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Nº de ventas</div>\n          <div style=\"font-size:20px; font-weight:700;\">${r.numVentas ?? 0}</div>\n        </div>\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Unidades vendidas</div>\n          <div style=\"font-size:20px; font-weight:700;\">${r.unidades ?? 0}</div>\n        </div>\n        <div style=\"flex:1 1 220px; border:1px solid #e5e7eb; border-radius:10px; padding:14px;\">\n          <div style=\"font-size:12px; color:#6b7280;\">Ticket medio</div>\n          <div style=\"font-size:20px; font-weight:700;\">${money(r.ticketMedio)}</div>\n        </div>\n      </div>\n\n      <h3 style=\"margin:24px 0 8px 0; font-size:16px;\">Top productos</h3>\n      <table style=\"border-collapse: collapse; width: 100%; font-size:14px;\">\n        <thead>\n          <tr style=\"background:#f3f4f6;\">\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:center; width:50px;\">#</th>\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:left;\">Producto</th>\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:right; width:120px;\">Unidades</th>\n            <th style=\"border:1px solid #e5e7eb; padding:10px; text-align:right; width:140px;\">Ingresos</th>\n          </tr>\n        </thead>\n        <tbody>\n          ${rows}\n        </tbody>\n      </table>\n\n      <h3 style=\"margin:24px 0 8px 0; font-size:16px;\">Top cliente</h3>\n      <div style=\"border:1px solid #e5e7eb; border-radius:10px; padding:14px; font-size:14px;\">\n        <div><strong>Nombre:</strong> ${esc(tc.nombre)}</div>\n        <div><strong>Gasto:</strong> ${money(tc.gasto)}</div>\n      </div>\n\n      <div style=\"color:#6b7280; font-size:12px; margin-top:24px;\">Este informe ha sido generado automáticamente por n8n.</div>\n    </div>\n  </div>\n</div>`;\n\nreturn [{ json: { html, toEmail: d.toEmail, subject: d.subject, periodo: d.periodo, resumen: d.resumen, topProductos: d.topProductos, topCliente: d.topCliente } }];"
       },
       "id": "construir-html",
-      "name": "Build HTML",
+      "name": "Construir HTML (CSS inline)",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [240, 0]
     },
     {
       "parameters": {
-        "fromEmail": "reports@example.com",
+        "fromEmail": "Ventas <rubencereceda23@gmail.com>",
         "toEmail": "={{ $json.toEmail }}",
-        "subject": "={{ $json.subject }}",
-        "html": "={{ $json.html }}",
-        "options": {}
+        "subject": "={{ $json.subject || 'Ventas Semanales' }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}"
       },
       "id": "send-email",
-      "name": "Send Email",
+      "name": "Enviar Email (SMTP)",
       "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [480, 0],
       "credentials": {
-        "smtp": {"id": "={{ $env.SMTP_CRED_ID }}", "name": "SMTP"}
+        "smtp": {
+          "id": "xbFMpH2YQb8CvU1c",
+          "name": "SMTP account"
+        }
       }
     },
     {
-      "parameters": {
-        "options": {}
-      },
+      "parameters": {},
       "id": "responder",
       "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
@@ -98,12 +89,12 @@
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Set Params", "type": "main", "index": 0}]]},
-    "Set Params": {"main": [[{"node": "Fetch Sales", "type": "main", "index": 0}]]},
-    "Fetch Sales": {"main": [[{"node": "Calculate Summary", "type": "main", "index": 0}]]},
-    "Calculate Summary": {"main": [[{"node": "Build HTML", "type": "main", "index": 0}]]},
-    "Build HTML": {"main": [[{"node": "Send Email", "type": "main", "index": 0}]]},
-    "Send Email": {"main": [[{"node": "Responder", "type": "main", "index": 0}]]}
+    "Webhook": { "main": [[{ "node": "Preparar parámetros", "type": "main", "index": 0 }]] },
+    "Preparar parámetros": { "main": [[{ "node": "Obtener ventas (todas)", "type": "main", "index": 0 }]] },
+    "Obtener ventas (todas)": { "main": [[{ "node": "Filtrar + Agregar (por periodo)", "type": "main", "index": 0 }]] },
+    "Filtrar + Agregar (por periodo)": { "main": [[{ "node": "Construir HTML (CSS inline)", "type": "main", "index": 0 }]] },
+    "Construir HTML (CSS inline)": { "main": [[{ "node": "Enviar Email (SMTP)", "type": "main", "index": 0 }]] },
+    "Enviar Email (SMTP)": { "main": [[{ "node": "Responder", "type": "main", "index": 0 }]] }
   },
   "meta": {
     "instanceId": "workflow-refactor"
