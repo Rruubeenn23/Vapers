@@ -1,8 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Comprar from './pages/Comprar';
 import Vender from './pages/Vender';
-import NuevoVaper from './pages/NuevoVaper';
-import Finanzas from './pages/Finanzas';
 import SalesChat from './pages/SalesChat';
 import Estadisticas from './pages/Estadisticas';
 import Layout from './components/Layout';
