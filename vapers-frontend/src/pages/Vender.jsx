@@ -86,16 +86,21 @@ function Vender() {
       return;
     }
 
+    const requestBody = {
+      id_vaper: selectedVaper.id,
+      cantidad: form.cantidad,
+      precio_unitario: form.precio_unitario,
+      cliente: form.cliente.trim(),
+      order_id: 2
+    };
+    
+    console.log('Sending request with:', JSON.stringify(requestBody, null, 2));
+
     try {
       const res = await fetch('https://api-vapers.onrender.com/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_vaper: selectedVaper.id,
-          cantidad: form.cantidad,
-          precio_unitario: form.precio_unitario,
-          cliente: form.cliente.trim(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {

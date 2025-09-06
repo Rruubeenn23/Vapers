@@ -120,9 +120,9 @@ app.post('/vapers', async (req, res) => {
 
 app.post('/ventas', async (req, res) => {
   try {
-    console.log('REQ BODY:', req.body); // 👉 Verifica que todo llegue bien
+    console.log('REQ BODY:', req.body); // 
 
-    const { id_vaper, cantidad, precio_unitario, cliente } = req.body;
+    const { id_vaper, cantidad, precio_unitario, cliente, order_id } = req.body;
 
     if (!id_vaper || !cantidad || precio_unitario === undefined || precio_unitario === null || !cliente) {
       return res.status(400).json({ error: 'Faltan datos requeridos' });
@@ -130,7 +130,13 @@ app.post('/ventas', async (req, res) => {
 
     const { data, error } = await supabase
       .from('ventas')
-      .insert([{ id_vaper, cantidad, precio_unitario, cliente }]);
+      .insert([{ 
+        id_vaper, 
+        cantidad, 
+        precio_unitario, 
+        cliente,
+        order_id: order_id || 1 // Default to 1 if not provided
+      }]);
 
     if (error) {
       console.error('SUPABASE INSERT ERROR:', error);
