@@ -207,7 +207,7 @@ function Vender() {
                     name="order_id"
                     min="1"
                     inputMode="numeric"
-                    value={form.order_id}
+                    value="1"
                     onChange={handleInputChange}
                     required
                   />
