@@ -120,46 +120,54 @@ app.post('/vapers', async (req, res) => {
 
 app.post('/ventas', async (req, res) => {
   try {
-    console.log('REQ BODY:', req.body); // 
+    console.log('REQ BODY /ventas:', req.body);
 
-    const { id_vaper, cantidad, precio_unitario, cliente, order_id } = req.body;
+    const { id_vaper, cantidad, precio_unitario, cliente } = req.body;
+    // Cast y validación robusta del order_id
+    const oidRaw = req.body.order_id;
+    const orderId = Number.isFinite(Number(oidRaw)) ? Number(oidRaw) : null;
 
-    if (!id_vaper || !cantidad || precio_unitario === undefined || precio_unitario === null || !cliente) {
-      return res.status(400).json({ error: 'Faltan datos requeridos' });
+    if (!id_vaper || !cantidad || precio_unitario == null || !cliente) {
+      return res.status(400).json({ ok: false, error: 'Faltan datos requeridos' });
+    }
+    if (orderId == null || orderId < 1) {
+      return res.status(400).json({ ok: false, error: 'order_id inválido' });
     }
 
     const { data, error } = await supabase
       .from('ventas')
-      .insert([{ 
-        id_vaper, 
-        cantidad, 
-        precio_unitario, 
+      .insert([{
+        id_vaper,
+        cantidad,
+        precio_unitario,
         cliente,
-        order_id: order_id || 1 // Default to 1 if not provided
-      }]);
+        order_id: orderId,   // ← sin fallback || 1
+      }])
+      .select('*');           // ← devuelve lo insertado para verificar
 
     if (error) {
-      console.error('SUPABASE INSERT ERROR:', error);
-      return res.status(500).json({ error: 'Error insertando venta' });
+      console.error('SUPABASE INSERT ERROR /ventas:', error);
+      return res.status(500).json({ ok: false, error: 'Error insertando venta' });
     }
 
-    // Reducir stock
+    // Reducir stock (como ya tienes)
     const { error: stockError } = await supabase.rpc('reducir_stock', {
       vid: id_vaper,
       cantidad_vendida: cantidad
     });
-
     if (stockError) {
-      console.error('SUPABASE RPC ERROR:', stockError);
-      return res.status(500).json({ error: 'Error reduciendo stock' });
+      console.error('SUPABASE RPC ERROR reducir_stock:', stockError);
+      return res.status(500).json({ ok: false, error: 'Error reduciendo stock' });
     }
 
-    res.status(201).json({ message: 'Venta registrada correctamente', data });
+    console.log('INSERT OK /ventas ->', data?.[0]);
+    return res.status(201).json({ ok: true, data: data?.[0] });
   } catch (err) {
-    console.error('UNEXPECTED ERROR:', err); // 👈 Aquí atrapamos cualquier error inesperado
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('UNEXPECTED ERROR /ventas:', err);
+    return res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
+
 
 app.get('/api/vapers', async (req, res) => {
   try {
