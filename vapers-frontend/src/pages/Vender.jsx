@@ -74,7 +74,7 @@ function Vender() {
       cantidad,
       precio_unitario: pvp,
       cliente: '',
-      order_id: 2, // Default order_id set to 2 as number
+      order_id: 1, // Default order_id set to 2 as number
       total: Number(pvp * cantidad).toFixed(2),
     });
     setShowModal(true);
