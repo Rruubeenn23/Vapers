@@ -9,6 +9,7 @@ const Estadisticas = () => {
   // Filtro & Ordenación tabla
   const [filterText, setFilterText] = useState('');
   const [sort, setSort] = useState({ key: 'fecha', dir: 'desc' }); // key: id|cliente|producto|precio_unitario|cantidad|total|fecha
+  const [selectedOrder, setSelectedOrder] = useState('all'); // 'all' or specific order_id
 
   useEffect(() => {
     // Ventas
@@ -31,34 +32,44 @@ const Estadisticas = () => {
 
   const productoNombre = (id) => productosMap[id] || id;
 
+  // Get unique order IDs
+  const orderIds = [...new Set(ventas.map(v => v.order_id).filter(Boolean).sort((a, b) => a - b))];
+
+  // Filter sales by selected order
+  const filteredVentas = useMemo(() => {
+    return selectedOrder === 'all' 
+      ? ventas 
+      : ventas.filter(v => v.order_id === parseInt(selectedOrder));
+  }, [ventas, selectedOrder]);
+
   // === KPIs ===
-  const totalVentas = ventas.length;
-  const totalProductosVendidos = ventas.reduce((acc, v) => acc + v.cantidad, 0);
-  const ingresosTotales = ventas.reduce((acc, v) => acc + v.total, 0);
+  const totalVentas = filteredVentas.length;
+  const totalProductosVendidos = filteredVentas.reduce((acc, v) => acc + v.cantidad, 0);
+  const ingresosTotales = filteredVentas.reduce((acc, v) => acc + v.total, 0);
   const ticketMedioPorProducto = totalProductosVendidos ? (ingresosTotales / totalProductosVendidos).toFixed(2) : 0;
 
   const clienteMasComprador = () => {
     const conteo = {};
-    ventas.forEach(v => { conteo[v.cliente] = (conteo[v.cliente] || 0) + v.cantidad; });
+    filteredVentas.forEach(v => { conteo[v.cliente] = (conteo[v.cliente] || 0) + v.cantidad; });
     return Object.entries(conteo).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
   };
 
   const clienteQueMasGasta = () => {
     const gastos = {};
-    ventas.forEach(v => { gastos[v.cliente] = (gastos[v.cliente] || 0) + v.total; });
+    filteredVentas.forEach(v => { gastos[v.cliente] = (gastos[v.cliente] || 0) + v.total; });
     return Object.entries(gastos).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
   };
 
   const productoMasVendido = () => {
     const conteo = {};
-    ventas.forEach(v => { conteo[v.id_vaper] = (conteo[v.id_vaper] || 0) + v.cantidad; });
+    filteredVentas.forEach(v => { conteo[v.id_vaper] = (conteo[v.id_vaper] || 0) + v.cantidad; });
     const [id] = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
     return productoNombre(id);
   };
 
   const productoMasRentable = () => {
     const totales = {};
-    ventas.forEach(v => { totales[v.id_vaper] = (totales[v.id_vaper] || 0) + v.total; });
+    filteredVentas.forEach(v => { totales[v.id_vaper] = (totales[v.id_vaper] || 0) + v.total; });
     const [id] = Object.entries(totales).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
     return productoNombre(id);
   };
@@ -68,7 +79,7 @@ const Estadisticas = () => {
   // === Filtrado + Ordenación tabla ===
   const filteredSorted = useMemo(() => {
     const text = filterText.trim().toLowerCase();
-    let rows = ventas;
+    let rows = filteredVentas;
 
     if (text) {
       rows = rows.filter((v) => {
@@ -90,7 +101,7 @@ const Estadisticas = () => {
     });
 
     return sorted;
-  }, [ventas, filterText, sort]);
+  }, [filteredVentas, filterText, sort]);
 
   const toggleSort = (key) => {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
@@ -103,12 +114,23 @@ const Estadisticas = () => {
       <div className="page-header">
         <h1 className="page-title">Estadísticas de Ventas</h1>
         <div className="page-actions">
+          <select
+            className="btn"
+            value={selectedOrder}
+            onChange={(e) => setSelectedOrder(e.target.value)}
+            style={{ marginRight: '10px' }}
+          >
+            <option value="all">Todos los pedidos</option>
+            {orderIds.map(orderId => (
+              <option key={orderId} value={orderId}>Pedido {orderId}</option>
+            ))}
+          </select>
           <input
             className="btn"
             placeholder="Filtrar por cliente o producto…"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            style={{ minWidth: 260 }}
+            style={{ minWidth: 260, marginRight: '10px' }}
           />
           <button className="btn" onClick={() => window.location.reload()}>Actualizar</button>
         </div>

@@ -14,6 +14,7 @@ function Vender() {
     cantidad: '',
     precio_unitario: '',
     cliente: '',
+    order_id: 2, // Default order_id set to 2 as number
     total: '',
   });
 
@@ -57,6 +58,7 @@ function Vender() {
       const next = { ...prev };
       if (name === 'cantidad') next.cantidad = parseInt(value || 0, 10);
       else if (name === 'precio_unitario') next.precio_unitario = parseFloat(value || 0);
+      else if (name === 'order_id') next.order_id = parseInt(value || 0, 10); // Parse as number immediately
       else next[name] = value;
 
       next.total = Number((next.precio_unitario || 0) * (next.cantidad || 0)).toFixed(2);
@@ -72,6 +74,7 @@ function Vender() {
       cantidad,
       precio_unitario: pvp,
       cliente: '',
+      order_id: 2, // Default order_id set to 2 as number
       total: Number(pvp * cantidad).toFixed(2),
     });
     setShowModal(true);
@@ -86,16 +89,27 @@ function Vender() {
       return;
     }
 
+    // Validate order_id is a number
+    if (form.order_id < 1) {
+      alert('El número de pedido debe ser mayor a 0');
+      return;
+    }
+
+    const requestBody = {
+      id_vaper: selectedVaper.id,
+      cantidad: form.cantidad,
+      precio_unitario: form.precio_unitario,
+      cliente: form.cliente.trim(),
+      order_id: form.order_id
+    };
+    
+    console.log('Sending request with:', JSON.stringify(requestBody, null, 2));
+
     try {
       const res = await fetch('https://api-vapers.onrender.com/ventas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_vaper: selectedVaper.id,
-          cantidad: form.cantidad,
-          precio_unitario: form.precio_unitario,
-          cliente: form.cliente.trim(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
@@ -187,14 +201,26 @@ function Vender() {
             <form onSubmit={handleSubmitVenta} className="modal-body">
               <div className="form-grid">
                 <div className="form-group">
+                  <label>Número de Pedido</label>
+                  <input
+                    type="number"
+                    name="order_id"
+                    min="1"
+                    inputMode="numeric"
+                    value={form.order_id}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
                   <label>Cliente</label>
                   <input
                     type="text"
                     name="cliente"
                     value={form.cliente}
                     onChange={handleInputChange}
-                    placeholder="Nombre del cliente"
                     required
+                    placeholder="Nombre del cliente"
                   />
                 </div>
                 <div className="form-group">
