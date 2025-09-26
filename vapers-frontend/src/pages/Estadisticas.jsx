@@ -15,61 +15,100 @@ const Estadisticas = () => {
     // Ventas
     fetch('https://api-vapers.onrender.com/api/ventas')
       .then(res => res.json())
-      .then(data => setVentas(Array.isArray(data) ? data : []));
+      .then(data => setVentas(Array.isArray(data) ? data : []))
+      .catch(() => setVentas([]));
 
     // Productos
     fetch('https://api-vapers.onrender.com/')
       .then(res => res.json())
       .then(data => {
-        const map = (data || []).reduce((acc, producto) => {
+        const safe = Array.isArray(data) ? data : [];
+        const map = safe.reduce((acc, producto) => {
           acc[producto.id] = producto.nombre;
           return acc;
         }, {});
         setProductosMap(map);
-        setVapers(data || []);
+        setVapers(safe);
+      })
+      .catch(() => {
+        setProductosMap({});
+        setVapers([]);
       });
   }, []);
 
   const productoNombre = (id) => productosMap[id] || id;
 
-  // Get unique order IDs
-  const orderIds = [...new Set(ventas.map(v => v.order_id).filter(Boolean).sort((a, b) => a - b))];
+  // IDs de pedido únicos y ordenados asc
+  const orderIds = useMemo(() => {
+    const ids = ventas
+      .map(v => v?.order_id)
+      .filter(id => id != null)
+      .sort((a, b) => a - b);
+    return [...new Set(ids)];
+  }, [ventas]);
 
-  // Filter sales by selected order
+  // Último pedido por fecha (fallback: id máximo)
+  const latestOrderId = useMemo(() => {
+    if (!ventas?.length) return null;
+    const conOrder = ventas.filter(v => v?.order_id != null);
+    if (!conOrder.length) return null;
+
+    const conFecha = conOrder.filter(v => v?.fecha);
+    if (conFecha.length) {
+      const masReciente = conFecha.reduce((acc, v) =>
+        new Date(v.fecha) > new Date(acc.fecha) ? v : acc
+      );
+      return masReciente.order_id;
+    }
+    // Fallback por order_id mayor
+    return conOrder.reduce(
+      (max, v) => (v.order_id > max ? v.order_id : max),
+      conOrder[0].order_id
+    );
+  }, [ventas]);
+
+  // Al llegar las ventas, si el usuario no ha tocado el select (sigue en 'all'), fijarlo al último pedido
+  useEffect(() => {
+    if (selectedOrder === 'all' && latestOrderId != null) {
+      setSelectedOrder(String(latestOrderId));
+    }
+  }, [latestOrderId, selectedOrder]);
+
+  // Filtrar ventas por pedido seleccionado
   const filteredVentas = useMemo(() => {
-    return selectedOrder === 'all' 
-      ? ventas 
-      : ventas.filter(v => v.order_id === parseInt(selectedOrder));
+    if (selectedOrder === 'all') return ventas;
+    const sel = Number(selectedOrder);
+    return ventas.filter(v => Number(v.order_id) === sel);
   }, [ventas, selectedOrder]);
 
   // === KPIs ===
   const totalVentas = filteredVentas.length;
-  const totalProductosVendidos = filteredVentas.reduce((acc, v) => acc + v.cantidad, 0);
-  const ingresosTotales = filteredVentas.reduce((acc, v) => acc + v.total, 0);
+  const totalProductosVendidos = filteredVentas.reduce((acc, v) => acc + (v.cantidad ?? 0), 0);
+  const ingresosTotales = filteredVentas.reduce((acc, v) => acc + (v.total ?? 0), 0);
   const ticketMedioPorProducto = totalProductosVendidos ? (ingresosTotales / totalProductosVendidos).toFixed(2) : 0;
 
   const clienteMasComprador = () => {
     const conteo = {};
-    filteredVentas.forEach(v => { conteo[v.cliente] = (conteo[v.cliente] || 0) + v.cantidad; });
+    filteredVentas.forEach(v => { conteo[v.cliente] = (conteo[v.cliente] || 0) + (v.cantidad ?? 0); });
     return Object.entries(conteo).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
   };
 
   const clienteQueMasGasta = () => {
     const gastos = {};
-    filteredVentas.forEach(v => { gastos[v.cliente] = (gastos[v.cliente] || 0) + v.total; });
+    filteredVentas.forEach(v => { gastos[v.cliente] = (gastos[v.cliente] || 0) + (v.total ?? 0); });
     return Object.entries(gastos).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
   };
 
   const productoMasVendido = () => {
     const conteo = {};
-    filteredVentas.forEach(v => { conteo[v.id_vaper] = (conteo[v.id_vaper] || 0) + v.cantidad; });
+    filteredVentas.forEach(v => { conteo[v.id_vaper] = (conteo[v.id_vaper] || 0) + (v.cantidad ?? 0); });
     const [id] = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
     return productoNombre(id);
   };
 
   const productoMasRentable = () => {
     const totales = {};
-    filteredVentas.forEach(v => { totales[v.id_vaper] = (totales[v.id_vaper] || 0) + v.total; });
+    filteredVentas.forEach(v => { totales[v.id_vaper] = (totales[v.id_vaper] || 0) + (v.total ?? 0); });
     const [id] = Object.entries(totales).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
     return productoNombre(id);
   };
@@ -91,13 +130,13 @@ const Estadisticas = () => {
 
     const sorted = [...rows].sort((a, b) => {
       const dir = sort.dir === 'asc' ? 1 : -1;
-      const val = (key) => {
-        if (key === 'producto') return productoNombre((a.id_vaper)).localeCompare(productoNombre(b.id_vaper));
+      const getVal = (key) => {
+        if (key === 'producto') return productoNombre(a.id_vaper).localeCompare(productoNombre(b.id_vaper));
         if (key === 'cliente') return (a.cliente || '').localeCompare(b.cliente || '');
         if (key === 'fecha') return new Date(a.fecha) - new Date(b.fecha);
         return (a[key] ?? 0) - (b[key] ?? 0);
       };
-      return dir * (val(sort.key));
+      return dir * getVal(sort.key);
     });
 
     return sorted;
@@ -107,7 +146,7 @@ const Estadisticas = () => {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
   };
 
-  const arrow = (key) => sort.key === key ? (sort.dir === 'asc' ? '▲' : '▼') : '↕';
+  const arrow = (key) => (sort.key === key ? (sort.dir === 'asc' ? '▲' : '▼') : '↕');
 
   return (
     <div className="container">
@@ -201,7 +240,7 @@ const Estadisticas = () => {
                   <td>{productoNombre(venta.id_vaper)}</td>
                   <td style={{ textAlign: 'right' }}>{venta.cantidad}</td>
                   <td style={{ textAlign: 'right' }}>{venta.total}</td>
-                  <td>{new Date(venta.fecha).toLocaleString()}</td>
+                  <td>{venta.fecha ? new Date(venta.fecha).toLocaleString() : '—'}</td>
                 </tr>
               ))}
               {filteredSorted.length === 0 && (
