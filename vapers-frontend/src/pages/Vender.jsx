@@ -7,7 +7,7 @@ function Vender() {
   const [showModal, setShowModal] = useState(false);
 
   // Ordenación + Filtro
-  const [sortBy, setSortBy] = useState('nombre-asc'); // nombre-asc | stock-desc | stock-asc
+  const [sortBy, setSortBy] = useState('stock-desc'); // nombre-asc | stock-desc | stock-asc
   const [filterText, setFilterText] = useState('');
 
   const [form, setForm] = useState({
