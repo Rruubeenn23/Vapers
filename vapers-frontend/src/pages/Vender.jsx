@@ -14,7 +14,7 @@ function Vender() {
     cantidad: '',
     precio_unitario: '',
     cliente: '',
-    order_id: 4, 
+    order_id: 5, 
     total: '',
   });
 
@@ -74,7 +74,7 @@ function Vender() {
       cantidad,
       precio_unitario: pvp,
       cliente: '',
-      order_id: 4, 
+      order_id: 5, 
       total: Number(pvp * cantidad).toFixed(2),
     });
     setShowModal(true);
@@ -204,9 +204,9 @@ function Vender() {
                   <input
                     type="number"
                     name="order_id"
-                    min="4"
+                    min="5"
                     inputMode="numeric"
-                    value="4"
+                    value="5"
                     onChange={handleInputChange}
                     required
                   />
