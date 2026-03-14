@@ -84,8 +84,8 @@ export default function Productos() {
 
   function shareList() {
     const inStock = vapers.filter(v => v.stock > 0);
-    const lines = inStock.map(v => `✅ ${v.nombre}`).join('\n');
-    const text = `🛒 *Productos disponibles - Vapers de Rubén*\n\n${lines}\n\n_Contáctame para pedir_ 📲`;
+    const lines = inStock.map(v => `${v.nombre}`).join('\n');
+    const text = `${lines}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
   }
