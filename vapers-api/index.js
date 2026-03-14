@@ -320,6 +320,46 @@ app.delete('/api/finanzas/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const lastWeekStart = new Date(now - 14 * 24 * 60 * 60 * 1000);
+    const threshold = parseInt(process.env.LOW_STOCK_THRESHOLD ?? 3);
+
+    const [{ data: recentSales }, { data: vapers }] = await Promise.all([
+      supabase.from('ventas').select('*').gte('fecha', lastWeekStart.toISOString()).order('fecha', { ascending: false }),
+      supabase.from('vapers').select('id, nombre, stock'),
+    ]);
+
+    const all = recentSales || [];
+    const nameMap = Object.fromEntries((vapers || []).map(v => [v.id, v.nombre]));
+
+    const todaySales    = all.filter(v => v.fecha && new Date(v.fecha) >= todayStart);
+    const thisWeekSales = all.filter(v => v.fecha && new Date(v.fecha) >= weekStart);
+    const lastWeekSales = all.filter(v => v.fecha && new Date(v.fecha) >= lastWeekStart && new Date(v.fecha) < weekStart);
+
+    const recent = all.slice(0, 8).map(v => ({ ...v, producto_nombre: nameMap[v.id_vaper] ?? null }));
+    const lowStock = (vapers || []).filter(v => (v.stock ?? 0) <= threshold);
+
+    res.json({
+      ok: true,
+      today: computeMetrics(todaySales),
+      thisWeek: computeMetrics(thisWeekSales),
+      lastWeek: computeMetrics(lastWeekSales),
+      recentSales: recent,
+      lowStock,
+      totalProducts: (vapers || []).length,
+      totalStock: (vapers || []).reduce((s, v) => s + (v.stock ?? 0), 0),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ─── NEW ENDPOINTS ────────────────────────────────────────────────────────────
 
 // Low stock

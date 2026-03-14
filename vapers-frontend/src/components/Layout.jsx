@@ -3,6 +3,16 @@ import './Layout.css';
 
 const NAV_ITEMS = [
   {
+    to: '/',
+    label: 'Inicio',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    ),
+  },
+  {
     to: '/vender',
     label: 'Vender',
     icon: (
@@ -35,16 +45,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    to: '/finanzas',
-    label: 'Finanzas',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="1" x2="12" y2="23"/>
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-      </svg>
-    ),
-  },
-  {
     to: '/chat',
     label: 'Chat',
     icon: (
@@ -57,7 +57,7 @@ const NAV_ITEMS = [
 
 function NavItem({ to, label, icon }) {
   const { pathname } = useLocation();
-  const active = pathname === to || (to === '/estadisticas' && pathname === '/');
+  const active = pathname === to || (to !== '/' && pathname.startsWith(to));
   return (
     <Link to={to} className={`nav-item ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined}>
       <span className="nav-icon">{icon}</span>
@@ -69,7 +69,6 @@ function NavItem({ to, label, icon }) {
 export default function Layout({ children }) {
   return (
     <div className="app-shell">
-      {/* Desktop sidebar */}
       <aside className="sidebar">
         <div className="brand">
           <svg className="brand-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -78,23 +77,15 @@ export default function Layout({ children }) {
           <span className="brand-name">Vapers de Rubén</span>
         </div>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(item => (
-            <NavItem key={item.to} {...item} />
-          ))}
+          {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} />)}
         </nav>
         <div className="sidebar-footer">© {new Date().getFullYear()} Rubén</div>
       </aside>
 
-      {/* Main content */}
-      <main className="main-content">
-        {children}
-      </main>
+      <main className="main-content">{children}</main>
 
-      {/* Mobile bottom nav */}
       <nav className="bottom-nav" aria-label="Navegación principal">
-        {NAV_ITEMS.map(item => (
-          <NavItem key={item.to} {...item} />
-        ))}
+        {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} />)}
       </nav>
     </div>
   );

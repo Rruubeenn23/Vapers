@@ -1,0 +1,146 @@
+/* Greeting */
+.dash-greeting { margin-bottom: 20px; }
+.dash-greeting-title { font-size: 22px; font-weight: 700; }
+.dash-greeting-sub   { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+
+/* Today hero card */
+.dash-today {
+  background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(124,58,237,0.05));
+  border: 1px solid rgba(124,58,237,0.35);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (min-width: 480px) { .dash-today { grid-template-columns: repeat(4, 1fr); } }
+
+.dash-today-item {}
+.dash-today-label { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+.dash-today-value { font-size: 24px; font-weight: 700; }
+.dash-today-value.money { color: var(--success); }
+
+/* Week comparison */
+.dash-week {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.dash-week-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.dash-week-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.dash-week-value { font-size: 20px; font-weight: 700; }
+.dash-week-sub   { font-size: 12px; margin-top: 3px; }
+.dash-growth-pos { color: var(--success); }
+.dash-growth-neg { color: var(--danger); }
+.dash-growth-neu { color: var(--text-muted); }
+
+/* Section header row */
+.dash-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.dash-section-header a,
+.dash-section-header button {
+  font-size: 13px;
+  color: var(--accent-fg);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Recent sales feed */
+.dash-feed {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.dash-feed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.dash-feed-row:last-child { border-bottom: none; }
+.dash-feed-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-feed-product { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.dash-feed-right { text-align: right; flex-shrink: 0; }
+.dash-feed-amount { font-size: 14px; font-weight: 600; color: var(--success); }
+.dash-feed-time   { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+/* Restock suggestions */
+.dash-restock {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.dash-restock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.dash-restock-row:last-child { border-bottom: none; }
+.dash-restock-name { font-size: 14px; font-weight: 500; }
+.dash-restock-detail { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.dash-restock-velocity { font-size: 13px; font-weight: 600; color: var(--accent-fg); white-space: nowrap; }
+
+/* Quick actions */
+.dash-quick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.dash-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: center;
+}
+.dash-quick-btn:hover { background: var(--surface2); border-color: rgba(124,58,237,0.4); }
+.dash-quick-icon { font-size: 22px; }
+
+/* Refresh indicator */
+.dash-refresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.dash-refresh button {
+  background: none;
+  border: none;
+  color: var(--accent-fg);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}

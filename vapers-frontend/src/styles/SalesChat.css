@@ -1,32 +1,29 @@
-/* Chat layout */
+/* Chat full-height layout */
 .chat-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 80px);
-  max-width: 760px;
-  margin: 0 auto;
-  gap: 0;
+  height: calc(100dvh - var(--bottom-nav-h));
+  overflow: hidden;
 }
-
 @media (min-width: 768px) {
-  .chat-layout { height: calc(100vh - 60px); }
+  .chat-layout { height: 100vh; max-width: 800px; margin: 0 auto; width: 100%; }
 }
 
-/* Messages area */
+/* Messages scrollable area */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 16px 8px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   -webkit-overflow-scrolling: touch;
 }
 
 /* Message rows */
-.msg-row { display: flex; flex-direction: column; max-width: 88%; }
+.msg-row { display: flex; flex-direction: column; max-width: 90%; }
 .msg-row.user { align-self: flex-end; align-items: flex-end; }
-.msg-row.ai   { align-self: flex-start; align-items: flex-start; }
+.msg-row.ai   { align-self: flex-start; align-items: flex-start; max-width: 96%; }
 
 /* Bubbles */
 .bubble {
@@ -35,6 +32,7 @@
   font-size: 14px;
   line-height: 1.55;
   border: 1px solid var(--border);
+  word-break: break-word;
 }
 .msg-row.user .bubble {
   background: var(--accent-dim);
@@ -45,44 +43,107 @@
 .msg-row.ai .bubble {
   background: var(--surface);
   border-bottom-left-radius: 4px;
+  width: 100%;
 }
 
-/* Structured response inside AI bubble */
-.resp-answer {
-  margin-bottom: 12px;
-  font-size: 14px;
-  line-height: 1.6;
+/* Typing indicator */
+.chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 18px;
 }
-.resp-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin: 12px 0;
+.chat-typing span {
+  width: 7px; height: 7px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: typing 1.2s infinite;
 }
-@media (min-width: 480px) { .resp-metrics { grid-template-columns: repeat(4, 1fr); } }
-.resp-metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 8px 10px; }
-.resp-metric-label { font-size: 11px; color: var(--text-muted); }
-.resp-metric-value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+.chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.9); }
+  30%            { opacity: 1;   transform: scale(1.1); }
+}
 
-.resp-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 12px 0 6px; }
+/* Empty/hint state */
+.chat-hint { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.chat-hint-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.chat-hint p { font-size: 14px; }
+.chat-hint-sub { font-size: 13px; color: var(--accent-fg); margin-top: 12px !important; }
 
-/* Help hint */
-.chat-hint {
-  text-align: center;
-  padding: 40px 16px;
+/* Quick queries panel */
+.quick-queries {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+}
+.quick-queries-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
-  font-size: 14px;
+  margin-bottom: 10px;
 }
-.chat-hint strong { color: var(--accent-fg); }
+.quick-queries-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+@media (min-width: 480px) { .quick-queries-grid { grid-template-columns: repeat(4, 1fr); } }
+.quick-query-btn {
+  padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+  line-height: 1.3;
+}
+.quick-query-btn:hover { background: var(--surface3); border-color: rgba(124,58,237,.4); }
+
+/* Days selector */
+.days-selector {
+  display: flex;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+.days-btn {
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.days-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+/* Toolbar */
+.chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 4px;
+  flex-wrap: wrap;
+}
 
 /* Input bar */
 .chat-inputbar {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 8px 16px 10px;
   border-top: 1px solid var(--border);
-  background: var(--surface);
 }
 .chat-textarea {
   flex: 1;
@@ -95,15 +156,28 @@
   font-size: 15px;
   resize: none;
   outline: none;
-  max-height: 160px;
+  max-height: 130px;
   transition: border-color 0.15s;
 }
 .chat-textarea:focus { border-color: var(--accent); }
 
-.send-btn { min-width: 80px; height: 42px; flex-shrink: 0; }
+.send-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 18px;
+  flex-shrink: 0;
+}
 
 /* Keyboard hint */
-.kbd-hint { font-size: 11px; color: var(--text-muted); padding: 4px 16px 0; }
+.kbd-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 16px 8px;
+  display: none;
+}
+@media (min-width: 768px) { .kbd-hint { display: block; } }
 .kbd {
   display: inline-block;
   padding: 1px 5px;
@@ -111,13 +185,25 @@
   border-bottom-width: 2px;
   border-radius: 4px;
   font-size: 11px;
-  color: var(--text-muted);
 }
 
-/* Email button zone */
-.chat-actions {
-  display: flex;
+/* AI response elements */
+.resp-answer { font-size: 14px; line-height: 1.6; margin-bottom: 8px; }
+.resp-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  padding: 10px 16px 0;
-  flex-wrap: wrap;
+  margin: 10px 0;
+}
+@media (min-width: 400px) { .resp-metrics { grid-template-columns: repeat(4, 1fr); } }
+.resp-metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 8px 10px; }
+.resp-metric-label { font-size: 11px; color: var(--text-muted); }
+.resp-metric-value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+.resp-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 5px;
 }
