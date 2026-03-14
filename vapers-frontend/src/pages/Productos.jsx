@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { toastSuccess, toastError } from '../lib/toast';
 import '../styles/Productos.css';
 
-const EMPTY_FORM = { nombre: '', imagen: '', stock: '', precio_unitario: '' };
+const EMPTY_FORM = { nombre: '', imagen: '', stock: '' };
 
 export default function Productos() {
   const [vapers, setVapers] = useState([]);
@@ -45,7 +45,6 @@ export default function Productos() {
       nombre: vaper.nombre ?? '',
       imagen: vaper.imagen ?? '',
       stock: vaper.stock ?? '',
-      precio_unitario: vaper.precio_unitario ?? '',
     });
     setShowForm(true);
   }
@@ -140,7 +139,7 @@ export default function Productos() {
               <div className="product-card-body">
                 <div className="product-card-name">{v.nombre}</div>
                 <div className="product-card-footer">
-                  <span className="product-card-price">€{v.precio_unitario}</span>
+                  <span className="product-card-price">{v.precio_unitario != null ? `€${v.precio_unitario}` : ''}</span>
                   <span className={`stock-pill ${stockClass(v.stock)}`}>{v.stock} uds</span>
                 </div>
               </div>
@@ -179,17 +178,6 @@ export default function Productos() {
                 value={form.nombre}
                 onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
                 placeholder="Elfbar 600, Lost Mary…"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Precio unitario (€)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.precio_unitario}
-                onChange={e => setForm(p => ({ ...p, precio_unitario: e.target.value }))}
                 required
               />
             </div>

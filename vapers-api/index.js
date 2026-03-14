@@ -155,7 +155,7 @@ app.get('/', async (req, res) => {
 // Vapers list
 app.get('/api/vapers', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('vapers').select('id, nombre, imagen, stock, precio_unitario');
+    const { data, error } = await supabase.from('vapers').select('id, nombre, imagen, stock');
     if (error) return res.status(500).json({ ok: false, error: error.message });
     res.json((data || []).map(v => ({ ...v, stock: Number(v.stock ?? 0) })));
   } catch (err) {
@@ -172,16 +172,14 @@ app.get('/api/vapers/:id', async (req, res) => {
 
 // Create vaper
 app.post('/vapers', async (req, res) => {
-  const { nombre, imagen, stock, precio_unitario } = req.body;
+  const { nombre, imagen, stock } = req.body;
   if (!nombre?.trim()) return res.status(400).json({ ok: false, error: 'El nombre es obligatorio' });
   if (isNaN(stock) || stock < 0) return res.status(400).json({ ok: false, error: 'Stock debe ser un número positivo' });
-  if (isNaN(precio_unitario) || precio_unitario <= 0) return res.status(400).json({ ok: false, error: 'Precio debe ser mayor a 0' });
 
   const { data, error } = await supabase.from('vapers').insert([{
     nombre: nombre.trim(),
     imagen: imagen?.trim() || 'https://placehold.co/150x150/1a1a1a/a78bfa?text=Vaper',
     stock: parseInt(stock),
-    precio_unitario: parseFloat(precio_unitario),
   }]).select();
 
   if (error) return res.status(500).json({ ok: false, error: error.message });
@@ -190,12 +188,11 @@ app.post('/vapers', async (req, res) => {
 
 // Edit vaper
 app.put('/api/vapers/:id', async (req, res) => {
-  const { nombre, imagen, stock, precio_unitario } = req.body;
+  const { nombre, imagen, stock } = req.body;
   const updates = {};
   if (nombre !== undefined) updates.nombre = nombre.trim();
   if (imagen !== undefined) updates.imagen = imagen.trim() || 'https://placehold.co/150x150/1a1a1a/a78bfa?text=Vaper';
   if (stock !== undefined) updates.stock = parseInt(stock);
-  if (precio_unitario !== undefined) updates.precio_unitario = parseFloat(precio_unitario);
 
   const { data, error } = await supabase.from('vapers').update(updates).eq('id', req.params.id).select();
   if (error) return res.status(500).json({ ok: false, error: error.message });
@@ -338,7 +335,7 @@ app.get('/api/restock-suggestions', async (req, res) => {
   try {
     const [{ data: ventas }, { data: vapers }] = await Promise.all([
       supabase.from('ventas').select('id_vaper, cantidad, fecha'),
-      supabase.from('vapers').select('id, nombre, stock, precio_unitario'),
+      supabase.from('vapers').select('id, nombre, stock'),
     ]);
 
     const now = Date.now();

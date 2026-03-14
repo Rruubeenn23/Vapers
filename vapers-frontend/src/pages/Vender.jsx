@@ -45,15 +45,14 @@ export default function Vender() {
   }, [vapers, sortBy, filterText]);
 
   function openModal(vaper) {
-    const pvp = vaper.precio_unitario || 0;
     setSelectedVaper(vaper);
     setRestockHint(null);
     setForm(prev => ({
       ...prev,
       cantidad: 1,
-      precio_unitario: pvp,
+      precio_unitario: '',
       cliente: '',
-      total: pvp.toFixed(2),
+      total: '0.00',
     }));
     setShowModal(true);
   }
@@ -174,7 +173,7 @@ export default function Vender() {
               <div className="card-body">
                 <div className="card-name">{v.nombre}</div>
                 <div className="card-meta">
-                  <span className="card-price">€{v.precio_unitario ?? '—'}</span>
+                  <span className="card-price">{v.precio_unitario != null ? `€${v.precio_unitario}` : ''}</span>
                   <span className={`stock-pill ${stockClass(v.stock)}`}>{stockLabel(v.stock)}</span>
                 </div>
               </div>
