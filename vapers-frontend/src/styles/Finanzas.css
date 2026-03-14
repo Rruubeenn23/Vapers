@@ -1,0 +1,84 @@
+/* Finance tabs */
+.fin-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.fin-tab {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.fin-tab.active { color: var(--accent-fg); border-bottom-color: var(--accent); }
+
+/* Summary cards */
+.fin-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+@media (min-width: 600px) { .fin-summary { grid-template-columns: repeat(3, 1fr); } }
+.fin-card {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.fin-card-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.fin-card-value { font-size: 22px; font-weight: 700; }
+.fin-card.income  .fin-card-value { color: var(--success); }
+.fin-card.expense .fin-card-value { color: var(--danger); }
+.fin-card.net     .fin-card-value { color: var(--accent-fg); }
+
+/* Add entry form */
+.add-entry-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.add-entry-form h3 { margin-bottom: 14px; font-size: 15px; color: var(--text-muted); }
+
+/* Tag selector */
+.tag-select {
+  display: flex;
+  gap: 8px;
+}
+.tag-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.tag-btn.active-income  { background: var(--success-dim); border-color: var(--success); color: #86efac; }
+.tag-btn.active-expense { background: var(--danger-dim);  border-color: var(--danger);  color: #fca5a5; }
+
+/* Finance table row indicators */
+.row-income td:first-child { border-left: 2px solid var(--success); }
+.row-expense td:first-child { border-left: 2px solid var(--danger); }
+
+/* Compras (restocks) */
+.compras-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}

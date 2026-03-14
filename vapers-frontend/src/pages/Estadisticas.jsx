@@ -1,261 +1,218 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../lib/api';
 import '../styles/Estadisticas.css';
 
-const Estadisticas = () => {
+export default function Estadisticas() {
   const [ventas, setVentas] = useState([]);
-  const [productosMap, setProductosMap] = useState({});
   const [vapers, setVapers] = useState([]);
+  const [weeklySummary, setWeeklySummary] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Filtro & Ordenación tabla
   const [filterText, setFilterText] = useState('');
-  const [sort, setSort] = useState({ key: 'fecha', dir: 'desc' }); // key: id|cliente|producto|precio_unitario|cantidad|total|fecha
-  const [selectedOrder, setSelectedOrder] = useState('all'); // 'all' or specific order_id
+  const [sort, setSort] = useState({ key: 'fecha', dir: 'desc' });
+  const [selectedOrder, setSelectedOrder] = useState('all');
 
   useEffect(() => {
-    // Ventas
-    fetch('https://api-vapers.onrender.com/api/ventas')
-      .then(res => res.json())
-      .then(data => setVentas(Array.isArray(data) ? data : []))
-      .catch(() => setVentas([]));
-
-    // Productos
-    fetch('https://api-vapers.onrender.com/')
-      .then(res => res.json())
-      .then(data => {
-        const safe = Array.isArray(data) ? data : [];
-        const map = safe.reduce((acc, producto) => {
-          acc[producto.id] = producto.nombre;
-          return acc;
-        }, {});
-        setProductosMap(map);
-        setVapers(safe);
-      })
-      .catch(() => {
-        setProductosMap({});
-        setVapers([]);
-      });
+    Promise.all([
+      api.get('/api/ventas'),
+      api.get('/api/vapers'),
+      api.get('/api/weekly-summary?days=7'),
+    ]).then(([v, vp, ws]) => {
+      setVentas(Array.isArray(v) ? v : []);
+      setVapers(Array.isArray(vp) ? vp : []);
+      setWeeklySummary(ws?.ok ? ws : null);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  const productoNombre = (id) => productosMap[id] || id;
+  const nameMap = useMemo(() => Object.fromEntries(vapers.map(v => [v.id, v.nombre])), [vapers]);
+  const nombre = (id) => nameMap[id] || id;
 
-  // IDs de pedido únicos y ordenados asc
   const orderIds = useMemo(() => {
-    const ids = ventas
-      .map(v => v?.order_id)
-      .filter(id => id != null)
-      .sort((a, b) => a - b);
-    return [...new Set(ids)];
+    const ids = ventas.map(v => v.order_id).filter(id => id != null);
+    return [...new Set(ids)].sort((a, b) => a - b);
   }, [ventas]);
 
-  // Último pedido por fecha (fallback: id máximo)
   const latestOrderId = useMemo(() => {
-    if (!ventas?.length) return null;
-    const conOrder = ventas.filter(v => v?.order_id != null);
-    if (!conOrder.length) return null;
-
-    const conFecha = conOrder.filter(v => v?.fecha);
-    if (conFecha.length) {
-      const masReciente = conFecha.reduce((acc, v) =>
-        new Date(v.fecha) > new Date(acc.fecha) ? v : acc
-      );
-      return masReciente.order_id;
-    }
-    // Fallback por order_id mayor
-    return conOrder.reduce(
-      (max, v) => (v.order_id > max ? v.order_id : max),
-      conOrder[0].order_id
-    );
+    const withOrder = ventas.filter(v => v.order_id != null);
+    if (!withOrder.length) return null;
+    const withFecha = withOrder.filter(v => v.fecha);
+    if (withFecha.length)
+      return withFecha.reduce((acc, v) => new Date(v.fecha) > new Date(acc.fecha) ? v : acc).order_id;
+    return withOrder.reduce((max, v) => v.order_id > max ? v.order_id : max, withOrder[0].order_id);
   }, [ventas]);
 
-  // Al llegar las ventas, si el usuario no ha tocado el select (sigue en 'all'), fijarlo al último pedido
   useEffect(() => {
-    if (selectedOrder === 'all' && latestOrderId != null) {
+    if (selectedOrder === 'all' && latestOrderId != null)
       setSelectedOrder(String(latestOrderId));
-    }
   }, [latestOrderId, selectedOrder]);
 
-  // Filtrar ventas por pedido seleccionado
   const filteredVentas = useMemo(() => {
     if (selectedOrder === 'all') return ventas;
-    const sel = Number(selectedOrder);
-    return ventas.filter(v => Number(v.order_id) === sel);
+    return ventas.filter(v => Number(v.order_id) === Number(selectedOrder));
   }, [ventas, selectedOrder]);
 
-  // === KPIs ===
+  // KPIs
   const totalVentas = filteredVentas.length;
-  const totalProductosVendidos = filteredVentas.reduce((acc, v) => acc + (v.cantidad ?? 0), 0);
-  const ingresosTotales = filteredVentas.reduce((acc, v) => acc + (v.total ?? 0), 0);
-  const ticketMedioPorProducto = totalProductosVendidos ? (ingresosTotales / totalProductosVendidos).toFixed(2) : 0;
+  const totalUnidades = filteredVentas.reduce((s, v) => s + (v.cantidad ?? 0), 0);
+  const ingresoTotal = filteredVentas.reduce((s, v) => s + (v.total ?? 0), 0);
+  const ticketMedio = totalUnidades ? (ingresoTotal / totalUnidades).toFixed(2) : '0.00';
+  const stockTotal = vapers.reduce((s, v) => s + (v.stock ?? 0), 0);
 
-  const clienteMasComprador = () => {
-    const conteo = {};
-    filteredVentas.forEach(v => { conteo[v.cliente] = (conteo[v.cliente] || 0) + (v.cantidad ?? 0); });
-    return Object.entries(conteo).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-  };
+  function topBy(fn) {
+    const map = {};
+    filteredVentas.forEach(v => {
+      const key = fn(v);
+      if (key) map[key] = (map[key] || 0) + (v.total ?? 0);
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+  }
+  const topCliente = topBy(v => v.cliente);
+  const topProducto = topBy(v => nombre(v.id_vaper));
 
-  const clienteQueMasGasta = () => {
-    const gastos = {};
-    filteredVentas.forEach(v => { gastos[v.cliente] = (gastos[v.cliente] || 0) + (v.total ?? 0); });
-    return Object.entries(gastos).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-  };
-
-  const productoMasVendido = () => {
-    const conteo = {};
-    filteredVentas.forEach(v => { conteo[v.id_vaper] = (conteo[v.id_vaper] || 0) + (v.cantidad ?? 0); });
-    const [id] = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
-    return productoNombre(id);
-  };
-
-  const productoMasRentable = () => {
-    const totales = {};
-    filteredVentas.forEach(v => { totales[v.id_vaper] = (totales[v.id_vaper] || 0) + (v.total ?? 0); });
-    const [id] = Object.entries(totales).sort((a, b) => b[1] - a[1])[0] || ['N/A'];
-    return productoNombre(id);
-  };
-
-  const productosRestantes = vapers.reduce((acc, p) => acc + (p.stock ?? 0), 0);
-
-  // === Filtrado + Ordenación tabla ===
+  // Table
   const filteredSorted = useMemo(() => {
     const text = filterText.trim().toLowerCase();
     let rows = filteredVentas;
-
-    if (text) {
-      rows = rows.filter((v) => {
-        const cliente = (v.cliente || '').toLowerCase();
-        const prod = (productoNombre(v.id_vaper) || '').toLowerCase();
-        return cliente.includes(text) || prod.includes(text);
-      });
-    }
-
-    const sorted = [...rows].sort((a, b) => {
+    if (text) rows = rows.filter(v =>
+      (v.cliente || '').toLowerCase().includes(text) ||
+      (nombre(v.id_vaper) || '').toLowerCase().includes(text)
+    );
+    return [...rows].sort((a, b) => {
       const dir = sort.dir === 'asc' ? 1 : -1;
-      const getVal = (key) => {
-        if (key === 'producto') return productoNombre(a.id_vaper).localeCompare(productoNombre(b.id_vaper));
-        if (key === 'cliente') return (a.cliente || '').localeCompare(b.cliente || '');
-        if (key === 'fecha') return new Date(a.fecha) - new Date(b.fecha);
-        return (a[key] ?? 0) - (b[key] ?? 0);
-      };
-      return dir * getVal(sort.key);
+      if (sort.key === 'producto') return dir * nombre(a.id_vaper).localeCompare(nombre(b.id_vaper));
+      if (sort.key === 'cliente')  return dir * (a.cliente || '').localeCompare(b.cliente || '');
+      if (sort.key === 'fecha')    return dir * (new Date(a.fecha) - new Date(b.fecha));
+      return dir * ((a[sort.key] ?? 0) - (b[sort.key] ?? 0));
     });
+  }, [filteredVentas, filterText, sort, nameMap]);
 
-    return sorted;
-  }, [filteredVentas, filterText, sort]);
+  const toggleSort = (key) => setSort(s => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' });
+  const arrow = (key) => sort.key === key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : '';
 
-  const toggleSort = (key) => {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
-  };
-
-  const arrow = (key) => (sort.key === key ? (sort.dir === 'asc' ? '▲' : '▼') : '↕');
+  const exportUrl = api.downloadUrl('/api/export/ventas.csv');
 
   return (
-    <div className="container">
+    <div className="page">
       <div className="page-header">
-        <h1 className="page-title">Estadísticas de Ventas</h1>
+        <h1>Estadísticas</h1>
         <div className="page-actions">
-          <select
-            className="btn"
-            value={selectedOrder}
-            onChange={(e) => setSelectedOrder(e.target.value)}
-            style={{ marginRight: '10px' }}
-          >
-            <option value="all">Todos los pedidos</option>
-            {orderIds.map(orderId => (
-              <option key={orderId} value={orderId}>Pedido {orderId}</option>
-            ))}
-          </select>
-          <input
-            className="btn"
-            placeholder="Filtrar por cliente o producto…"
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            style={{ minWidth: 260, marginRight: '10px' }}
-          />
-          <button className="btn" onClick={() => window.location.reload()}>Actualizar</button>
+          <a className="btn export-btn" href={exportUrl} download="ventas.csv">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            CSV
+          </a>
         </div>
       </div>
 
-      {/* KPIs como cards con título y valor */}
-      <div className="section kpis-grid">
+      {/* Weekly snapshot */}
+      {weeklySummary && (
+        <div className="weekly-card section">
+          <div className="weekly-card-title">Últimos 7 días</div>
+          <div className="weekly-stats">
+            <div>
+              <div className="weekly-stat-label">Ingresos</div>
+              <div className="weekly-stat-value" style={{ color: 'var(--success)' }}>€{weeklySummary.metrics?.ingresoTotal?.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="weekly-stat-label">Unidades</div>
+              <div className="weekly-stat-value">{weeklySummary.metrics?.unidades}</div>
+            </div>
+            <div>
+              <div className="weekly-stat-label">Top cliente</div>
+              <div className="weekly-stat-value" style={{ fontSize: 15 }}>{weeklySummary.topCliente?.nombre ?? '—'}</div>
+            </div>
+            <div>
+              <div className="weekly-stat-label">Top producto</div>
+              <div className="weekly-stat-value" style={{ fontSize: 15 }}>{weeklySummary.topProductos?.[0]?.producto ?? '—'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="kpi-grid section">
         <div className="kpi-card">
-          <div className="kpi-label">Total ventas</div>
+          <div className="kpi-label">Ventas</div>
           <div className="kpi-value">{totalVentas}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Total productos vendidos</div>
-          <div className="kpi-value">{totalProductosVendidos}</div>
+          <div className="kpi-label">Unidades</div>
+          <div className="kpi-value">{totalUnidades}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Productos restantes</div>
-          <div className="kpi-value">{productosRestantes}</div>
+          <div className="kpi-label">Ingresos</div>
+          <div className="kpi-value success">€{ingresoTotal.toFixed(2)}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Ingresos totales</div>
-          <div className="kpi-value">€{ingresosTotales.toFixed(2)}</div>
+          <div className="kpi-label">Ticket medio</div>
+          <div className="kpi-value">€{ticketMedio}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Ticket medio por producto</div>
-          <div className="kpi-value">€{ticketMedioPorProducto}</div>
+          <div className="kpi-label">Stock total</div>
+          <div className="kpi-value">{stockTotal} uds</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Producto más vendido</div>
-          <div className="kpi-value">{productoMasVendido()}</div>
+          <div className="kpi-label">Top cliente</div>
+          <div className="kpi-value accent" style={{ fontSize: 15 }}>{topCliente}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">Producto más rentable</div>
-          <div className="kpi-value">{productoMasRentable()}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Cliente que más compra</div>
-          <div className="kpi-value">{clienteMasComprador()}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-label">Cliente que más gasta</div>
-          <div className="kpi-value">{clienteQueMasGasta()}</div>
+          <div className="kpi-label">Top producto</div>
+          <div className="kpi-value accent" style={{ fontSize: 15 }}>{topProducto}</div>
         </div>
       </div>
 
-      {/* Historial con ordenación y filtro */}
+      {/* Controls */}
+      <div className="stats-controls">
+        <select
+          className="order-select"
+          value={selectedOrder}
+          onChange={e => setSelectedOrder(e.target.value)}
+        >
+          <option value="all">Todos los pedidos</option>
+          {orderIds.map(id => (
+            <option key={id} value={id}>Pedido {id}</option>
+          ))}
+        </select>
+        <input
+          style={{ flex: 1, minWidth: 160 }}
+          placeholder="Filtrar cliente o producto…"
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+        />
+      </div>
+
+      {/* Table */}
       <div className="section">
-        <h2>Historial de ventas</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th onClick={() => toggleSort('cliente')} className="th-sort">Cliente {arrow('cliente')}</th>
-                <th onClick={() => toggleSort('producto')} className="th-sort">Producto {arrow('producto')}</th>
-                <th onClick={() => toggleSort('cantidad')} className="th-sort" style={{ textAlign: 'right' }}>
-                  Cantidad {arrow('cantidad')}
-                </th>
-                <th onClick={() => toggleSort('total')} className="th-sort" style={{ textAlign: 'right' }}>
-                  Total (€) {arrow('total')}
-                </th>
-                <th onClick={() => toggleSort('fecha')} className="th-sort">Fecha {arrow('fecha')}</th>
+                <th className="th-sort" onClick={() => toggleSort('cliente')}>Cliente{arrow('cliente')}</th>
+                <th className="th-sort" onClick={() => toggleSort('producto')}>Producto{arrow('producto')}</th>
+                <th className="th-sort" onClick={() => toggleSort('cantidad')} style={{ textAlign: 'right' }}>Uds{arrow('cantidad')}</th>
+                <th className="th-sort" onClick={() => toggleSort('total')} style={{ textAlign: 'right' }}>Total{arrow('total')}</th>
+                <th className="th-sort" onClick={() => toggleSort('fecha')}>Fecha{arrow('fecha')}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSorted.map((venta) => (
-                <tr key={venta.id}>
-                  <td>{venta.cliente}</td>
-                  <td>{productoNombre(venta.id_vaper)}</td>
-                  <td style={{ textAlign: 'right' }}>{venta.cantidad}</td>
-                  <td style={{ textAlign: 'right' }}>{venta.total}</td>
-                  <td>{venta.fecha ? new Date(venta.fecha).toLocaleString() : '—'}</td>
+              {loading ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24 }}><div className="spinner" /></td></tr>
+              ) : filteredSorted.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Sin resultados</td></tr>
+              ) : filteredSorted.map(v => (
+                <tr key={v.id}>
+                  <td>{v.cliente}</td>
+                  <td>{nombre(v.id_vaper)}</td>
+                  <td style={{ textAlign: 'right' }}>{v.cantidad}</td>
+                  <td style={{ textAlign: 'right' }}>€{(v.total ?? 0).toFixed(2)}</td>
+                  <td>{v.fecha ? new Date(v.fecha).toLocaleDateString('es-ES') : '—'}</td>
                 </tr>
               ))}
-              {filteredSorted.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: 16, color: 'var(--muted)' }}>
-                    Sin resultados
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </div>
     </div>
   );
-};
-
-export default Estadisticas;
+}

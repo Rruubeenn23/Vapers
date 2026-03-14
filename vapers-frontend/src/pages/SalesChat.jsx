@@ -1,251 +1,209 @@
-// src/pages/SalesChat.jsx
-import React, { useEffect, useRef, useState } from 'react';
-import { chatVentas } from '../lib/chatVentas';
+import { useEffect, useRef, useState } from 'react';
 import AutoTextarea from '../components/AutoTextArea';
+import { api } from '../lib/api';
+import { toastSuccess, toastError } from '../lib/toast';
 import '../styles/SalesChat.css';
 
 export default function SalesChat() {
-  // Estado original (sin cambios de lógica)
-  const [prompt, setPrompt] = useState('¿Quién ha comprado más?');
+  const [prompt, setPrompt] = useState('');
   const [days, setDays] = useState(7);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [resp, setResp] = useState(null);
-  const [error, setError] = useState(null);
-
-  // Envío de email (igual que antes)
   const [mailLoading, setMailLoading] = useState(false);
-  const [mailMsg, setMailMsg] = useState(null);
-  const [mailErr, setMailErr] = useState(null);
+  const bottomRef = useRef(null);
 
-  // Mantengo tu URL tal cual
-  const EMAIL_URL = 'https://n8n-cjps.onrender.com/webhook/resumen-7dias-email';
-
-  // Ref para auto-scroll de mensajes/resultado
-  const listRef = useRef(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   async function onAsk(e) {
-    e.preventDefault();
+    e?.preventDefault();
+    if (!prompt.trim() || loading) return;
+
+    const userMsg = { role: 'user', text: prompt.trim() };
+    setMessages(prev => [...prev, userMsg]);
+    setPrompt('');
     setLoading(true);
-    setError(null);
-    setResp(null);
+
     try {
-      const data = await chatVentas({ prompt, days });
-      if (!data?.ok) setError(data?.error || 'Error desconocido');
-      setResp(data);
+      const data = await api.post('/api/ventas-chat', { prompt: userMsg.text, days });
+      setMessages(prev => [...prev, { role: 'ai', data }]);
     } catch (err) {
-      setError(err?.message || 'Error de red');
+      setMessages(prev => [...prev, { role: 'ai', error: err.message || 'Error desconocido' }]);
     } finally {
       setLoading(false);
     }
   }
 
-  async function sendResumenEmail() {
+  async function sendEmail() {
     setMailLoading(true);
-    setMailMsg(null);
-    setMailErr(null);
     try {
-      const body = {
-        toEmail: 'rubencereceda23@gmail.com',
-        subject: 'Resumen ventas últimos 7 días',
-        // from: new Date(Date.now() - 7*24*60*60*1000).toISOString(),
-        // to: new Date().toISOString(),
-      };
-
-      const r = await fetch(EMAIL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || data.ok === false) {
-        throw new Error(data?.error || `HTTP ${r.status}`);
-      }
-      setMailMsg('✅ Email enviado correctamente');
-    } catch (e) {
-      setMailErr(`⚠️ No se pudo enviar el email: ${e.message}`);
+      await api.post('/api/resumen-7dias-email', { days: 7 });
+      toastSuccess('Email enviado correctamente');
+    } catch (err) {
+      toastError('No se pudo enviar el email: ' + err.message);
     } finally {
       setMailLoading(false);
     }
   }
 
-  // Auto-scroll al actualizar el resultado
-  useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [resp]);
-
-  // Atajos de teclado para el textarea:
-  // Enter -> enviar; Ctrl/Cmd+Enter -> salto de línea; Esc -> limpiar
   function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const el = e.target;
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        const next = prompt.slice(0, start) + '\n' + prompt.slice(end);
-        setPrompt(next);
-        requestAnimationFrame(() => {
-          el.selectionStart = el.selectionEnd = start + 1;
-        });
-        return;
-      }
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      if (!loading) onAsk(e);
+      onAsk(e);
     } else if (e.key === 'Escape') {
       setPrompt('');
     }
   }
 
   return (
-    <div className="container">
-      <div className="page-header">
-        <h1 className="page-title">Sales Chat</h1>
-        <div className="page-actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setPrompt('¿Quién ha comprado más?')}
-            title="Restaurar ejemplo"
-          >
-            Sugerencia
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setDays((d) => (d === 7 ? 30 : 7))}
-            title="Alternar 7/30 días"
-          >
-            Rango: {days} días
-          </button>
-          <button
-            type="button"
-            className="btn"
-            disabled={mailLoading}
-            onClick={sendResumenEmail}
-            title="Enviar resumen de los últimos 7 días al correo"
-          >
-            {mailLoading ? 'Enviando…' : 'Enviar resumen 7 días'}
-          </button>
+    <div className="chat-layout">
+      {/* Messages */}
+      <div className="chat-messages">
+        {messages.length === 0 && (
+          <div className="chat-hint">
+            <strong>Sales Chat</strong>
+            <p>Pregunta sobre tus ventas, stock o finanzas.</p>
+            <p style={{ marginTop: 12 }}>
+              {['¿Quién ha comprado más?', '¿Qué producto se vende más?', '¿Cuál es el ingreso de esta semana?'].map(s => (
+                <button key={s} className="btn ghost" style={{ margin: '4px 4px 0 0', fontSize: 13 }} onClick={() => setPrompt(s)}>
+                  {s}
+                </button>
+              ))}
+            </p>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`msg-row ${msg.role}`}>
+            {msg.role === 'user' ? (
+              <div className="bubble">{msg.text}</div>
+            ) : msg.error ? (
+              <div className="bubble">
+                <div className="alert alert-danger">{msg.error}</div>
+              </div>
+            ) : (
+              <div className="bubble">
+                <AIResponse data={msg.data} />
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="msg-row ai">
+            <div className="bubble" style={{ padding: '14px 20px' }}>
+              <div className="spinner" style={{ width: 18, height: 18 }} />
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Actions bar */}
+      <div className="chat-actions">
+        <button
+          className="btn"
+          style={{ fontSize: 13 }}
+          onClick={() => setDays(d => d === 7 ? 30 : 7)}
+        >
+          Rango: {days} días
+        </button>
+        <button
+          className="btn"
+          style={{ fontSize: 13 }}
+          onClick={sendEmail}
+          disabled={mailLoading}
+        >
+          {mailLoading ? 'Enviando…' : 'Enviar resumen 7d'}
+        </button>
+      </div>
+
+      {/* Input bar */}
+      <form onSubmit={onAsk} className="chat-inputbar">
+        <AutoTextarea
+          value={prompt}
+          onChange={setPrompt}
+          onKeyDown={handleKeyDown}
+          minRows={1}
+          maxRows={6}
+          className="chat-textarea"
+          placeholder="Escribe tu pregunta…"
+        />
+        <button type="submit" className="btn primary send-btn" disabled={loading || !prompt.trim()}>
+          Enviar
+        </button>
+      </form>
+      <div className="kbd-hint">
+        <span className="kbd">Enter</span> enviar · <span className="kbd">Shift+Enter</span> nueva línea
+      </div>
+    </div>
+  );
+}
+
+function AIResponse({ data }) {
+  if (!data) return null;
+
+  return (
+    <div>
+      {data.answer && <div className="resp-answer">{data.answer}</div>}
+
+      {data.metrics && (
+        <div className="resp-metrics">
+          <div className="resp-metric">
+            <div className="resp-metric-label">Ingresos</div>
+            <div className="resp-metric-value" style={{ color: 'var(--success)' }}>€{(data.metrics.ingresoTotal || 0).toFixed(2)}</div>
+          </div>
+          <div className="resp-metric">
+            <div className="resp-metric-label">Ventas</div>
+            <div className="resp-metric-value">{data.metrics.numVentas ?? 0}</div>
+          </div>
+          <div className="resp-metric">
+            <div className="resp-metric-label">Unidades</div>
+            <div className="resp-metric-value">{data.metrics.unidades ?? 0}</div>
+          </div>
+          <div className="resp-metric">
+            <div className="resp-metric-label">Ticket</div>
+            <div className="resp-metric-value">€{(data.metrics.ticketMedio || 0).toFixed(2)}</div>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="section card" style={{ padding: 16 }}>
-        <form onSubmit={onAsk} className="chat-wrap" role="search">
-          <div className="chat-messages" ref={listRef} aria-live="polite">
-            {!resp && !error && (
-              <div className="help-hint">
-                Haz una pregunta sobre tus ventas (por ejemplo: <em>“¿Quién ha comprado más?”</em>).
-              </div>
-            )}
-
-            {error && (
-              <div className="msg">
-                <div className="bubble" style={{ borderColor: 'rgba(239,68,68,.45)', background: 'rgba(239,68,68,.12)' }}>
-                  {error}
-                </div>
-              </div>
-            )}
-
-            {resp && (
-              <div className="msg">
-                <div className="bubble" style={{ width: '100%' }}>
-                  <div style={{ display: 'grid', gap: 8 }}>
-                    <div className="badge">Resultado {resp.intent ? `— ${resp.intent}` : ''}</div>
-                    <div><strong>Respuesta:</strong> {resp.answer || '(sin texto)'}</div>
-
-                    {resp.period && (
-                      <div>
-                        <strong>Periodo:</strong>{' '}
-                        {new Date(resp.period.from).toLocaleString('es-ES')} —{' '}
-                        {new Date(resp.period.to).toLocaleString('es-ES')}
-                      </div>
-                    )}
-
-                    {resp.metrics && (
-                      <ul style={{ margin: 0 }}>
-                        <li>Ingreso total: {Number(resp.metrics.ingresoTotal || 0).toFixed(2)} €</li>
-                        <li>Nº ventas: {resp.metrics.numVentas}</li>
-                        <li>Unidades: {resp.metrics.unidades}</li>
-                        <li>Ticket medio: {Number(resp.metrics.ticketMedio || 0).toFixed(2)} €</li>
-                      </ul>
-                    )}
-
-                    {resp.topCliente && (
-                      <div>
-                        <strong>Top cliente:</strong> {resp.topCliente.nombre} —{' '}
-                        {Number(resp.topCliente.gasto || 0).toFixed(2)} €
-                      </div>
-                    )}
-
-                    {Array.isArray(resp.topProductos) && resp.topProductos.length > 0 && (
-                      <>
-                        <h3 style={{ marginTop: 8 }}>Top productos</h3>
-                        <div className="table-wrap">
-                          <table className="table">
-                            <thead>
-                              <tr>
-                                <th>Producto</th>
-                                <th style={{ textAlign: 'right' }}>Unidades</th>
-                                <th style={{ textAlign: 'right' }}>Ingresos</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {resp.topProductos.map((p, idx) => (
-                                <tr key={idx}>
-                                  <td>{p.producto}</td>
-                                  <td style={{ textAlign: 'right' }}>{p.unidades}</td>
-                                  <td style={{ textAlign: 'right' }}>{Number(p.ingresos || 0).toFixed(2)} €</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+      {data.topCliente && (
+        <div style={{ marginTop: 10 }}>
+          <div className="resp-section-title">Top cliente</div>
+          <div style={{ fontSize: 14 }}>
+            <strong>{data.topCliente.nombre}</strong> — €{(data.topCliente.gasto || 0).toFixed(2)}
           </div>
+        </div>
+      )}
 
-          {/* Barra de entrada con textarea auto-creciente y atajos */}
-          <div>
-            <div className="chat-inputbar">
-              <AutoTextarea
-                value={prompt}
-                onChange={setPrompt}
-                onKeyDown={handleKeyDown}
-                minRows={1}
-                maxRows={8}
-                className="chat-textarea"
-                placeholder="Escribe tu mensaje…"
-              />
-              <button type="submit" className="btn primary send-btn" disabled={loading}>
-                {loading ? 'Consultando…' : 'Enviar'}
-              </button>
-            </div>
-            <div className="help-hint" style={{ marginTop: 6 }}>
-              Atajos: <span className="kbd">Enter</span> enviar ·{' '}
-              <span className="kbd">Ctrl/Cmd + Enter</span> salto de línea · <span className="kbd">Esc</span> limpiar
-            </div>
+      {data.topProductos?.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div className="resp-section-title">Top productos</div>
+          <div className="table-wrap" style={{ marginTop: 6 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th style={{ textAlign: 'right' }}>Uds</th>
+                  <th style={{ textAlign: 'right' }}>€</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.topProductos.map((p, i) => (
+                  <tr key={i}>
+                    <td>{p.producto}</td>
+                    <td style={{ textAlign: 'right' }}>{p.unidades}</td>
+                    <td style={{ textAlign: 'right' }}>€{(p.ingresos || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </form>
-
-        {/* Mensajes del envío por email */}
-        {mailErr && (
-          <div style={{ marginTop: 12, color: '#b91c1c', background: '#fee2e2', padding: 10, borderRadius: 8 }}>
-            {mailErr}
-          </div>
-        )}
-        {mailMsg && (
-          <div style={{ marginTop: 12, color: '#065f46', background: '#d1fae5', padding: 10, borderRadius: 8 }}>
-            {mailMsg}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
