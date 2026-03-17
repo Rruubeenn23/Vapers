@@ -23,15 +23,23 @@ export default function Vender() {
   });
 
   useEffect(() => {
-    Promise.all([
-      api.get('/api/vapers'),
-      api.get('/api/next-order-id'),
-    ]).then(([vapersData, orderData]) => {
-      setVapers(Array.isArray(vapersData) ? vapersData : []);
-      setForm(prev => ({ ...prev, order_id: orderData?.nextOrderId ?? 1 }));
-    }).catch(() => {
-      toastError('Error cargando productos');
-    }).finally(() => setLoading(false));
+    const stored = localStorage.getItem('currentOrderId');
+    if (stored) {
+      setForm(prev => ({ ...prev, order_id: Number(stored) }));
+      api.get('/api/vapers').then(vapersData => {
+        setVapers(Array.isArray(vapersData) ? vapersData : []);
+      }).catch(() => toastError('Error cargando productos')).finally(() => setLoading(false));
+    } else {
+      Promise.all([
+        api.get('/api/vapers'),
+        api.get('/api/next-order-id'),
+      ]).then(([vapersData, orderData]) => {
+        setVapers(Array.isArray(vapersData) ? vapersData : []);
+        const id = orderData?.nextOrderId ?? 1;
+        localStorage.setItem('currentOrderId', id);
+        setForm(prev => ({ ...prev, order_id: id }));
+      }).catch(() => toastError('Error cargando productos')).finally(() => setLoading(false));
+    }
   }, []);
 
   const filtered = useMemo(() => {
@@ -116,6 +124,18 @@ export default function Vender() {
     }
   }
 
+  async function handleNewOrder() {
+    try {
+      const data = await api.get('/api/next-order-id');
+      const id = data?.nextOrderId ?? 1;
+      localStorage.setItem('currentOrderId', id);
+      setForm(prev => ({ ...prev, order_id: id }));
+      toastSuccess(`Nuevo pedido #${id} iniciado`);
+    } catch {
+      toastError('Error al crear nuevo pedido');
+    }
+  }
+
   function stockClass(stock) {
     if (stock <= 0) return 'stock-out';
     if (stock <= 3) return 'stock-low';
@@ -130,6 +150,10 @@ export default function Vender() {
     <div className="page">
       <div className="page-header">
         <h1>Vender</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 14, opacity: 0.7 }}>Pedido <strong>#{form.order_id}</strong></span>
+          <button className="btn" type="button" onClick={handleNewOrder}>Nuevo pedido</button>
+        </div>
       </div>
 
       {restockHint && (

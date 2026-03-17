@@ -206,7 +206,7 @@ app.delete('/api/vapers/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Auto order ID
+// Auto order ID — returns max order_id + 1 (frontend decides when to call this)
 app.get('/api/next-order-id', async (req, res) => {
   const { data, error } = await supabase.from('ventas').select('order_id').order('order_id', { ascending: false }).limit(1);
   if (error) return res.status(500).json({ ok: false, error: error.message });
